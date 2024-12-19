@@ -12,18 +12,19 @@ const ProjectCard = ({ title, rating, author, isFavorite }: any) => (
         alt={title}
         className="w-full h-48 object-cover rounded-t-lg"
       />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="absolute top-2 right-2 hover:bg-white/50"
-      >
-        <Heart 
-          className={`h-5 w-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white'}`}
-        />
-      </Button>
     </div>
     <CardContent className="p-4">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start relative">
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="absolute -top-2 -right-2 hover:bg-white/50"
+      >
+        <Heart 
+          className={`h-14 w-14 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white'}`}
+        />
+      </Button>
+
         <div>
           <h3 className="font-semibold">{title}</h3>
           <div className="flex items-center space-x-1 mt-1">
@@ -67,7 +68,7 @@ const FavoritesPage = () => {
         <div className="relative flex-1">
           <Input
             placeholder="Search for products..."
-            className="pl-10 bg-gray-50"
+            className="pl-10 bg-gray-50 rounded-2xl"
           />
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         </div>
