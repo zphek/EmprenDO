@@ -1,5 +1,13 @@
-export default function Page() {
+import Footer from "@/components/Footer";
+import Navbar from "@/components/Navbar";
+import getSession from "../../../../actions/verifySession";
+
+export default async function Page() {
+    const isAuthenticated = await getSession();
+    
     return (
+      <>
+      <Navbar isAuthenticated={isAuthenticated?.isAuthenticated ?? false}/>
       <main className="bg-white">
         {/* Hero Section */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
@@ -154,5 +162,7 @@ export default function Page() {
           </div>
         </section>
       </main>
+      <Footer/>
+      </>
     );
   }
