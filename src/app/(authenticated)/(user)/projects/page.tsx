@@ -7,6 +7,7 @@ import MentoringHeader from './MentoringHeader';
 // Firebase imports
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/firebase'; // Asegúrate de tener este archivo configurado
+import { useRouter } from 'next/navigation';
 
 const SkeletonCard = () => (
   <div className="bg-white rounded-xl overflow-hidden animate-pulse">
@@ -40,6 +41,7 @@ const SkeletonCategories = () => (
 const CareerPathsUI = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState([]);
+  const router = useRouter();
   
   useEffect(() => {
     const fetchCategories = async () => {
@@ -166,7 +168,7 @@ const CareerPathsUI = () => {
                     <Heart size={20} className="text-gray-400 hover:text-red-500 transition-colors" />
                   </button>
 
-                  <h3 className="font-semibold text-lg text-gray-800 mb-2">{path.title}</h3>
+                  <h3 className="font-semibold text-lg text-gray-800 mb-2 cursor-pointer hover:underline transition-[400ms]" onClick={()=> router.push("projects/1")}>{path.title}</h3>
                   <div className="flex items-center gap-x-2">
                     <div className="text-sm text-gray-600 mb-2">
                       {path.rating}

@@ -2,12 +2,24 @@
 
 import { ArrowLeft, Linkedin, Image as ImageIcon, Lock, Shield, ChevronDown, X } from "lucide-react"
 import Image from "next/image"
-import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
+import { useState, useRef, useEffect } from "react"
 
 export default function Page() {
+  const route = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
-  const fileInputRef = useRef(null);
+  const [showSplash, setShowSplash] = useState(true);
+  const fileInputRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Hide splash screen after 2 seconds
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handlePublish = () => {
     setIsLoading(true);
@@ -24,13 +36,13 @@ export default function Page() {
       preview: URL.createObjectURL(file)
     }));
     
-    setSelectedImages((prev:any) => [...prev, ...newImages]);
+    setSelectedImages((prev: any) => [...prev, ...newImages]);
   };
 
   const removeImage = (index:any) => {
     setSelectedImages(prev => {
       const newImages = [...prev];
-      URL.revokeObjectURL(newImages[index].preview); // Liberar memoria
+      URL.revokeObjectURL(newImages[index].preview);
       newImages.splice(index, 1);
       return newImages;
     });
@@ -40,9 +52,18 @@ export default function Page() {
     fileInputRef.current?.click();
   };
 
+  if (showSplash) {
+    return (
+      <div className="fixed inset-0 bg-white flex items-center justify-center transition-opacity duration-500">
+        <div className="w-16 h-16 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+
   return ( 
     <main className="w-full max-h-screen flex justify-center items-center overflow-hidden bg-white">
-      <button className="absolute top-4 left-4 shadow-md p-1.5 rounded-full bg-white">
+      <button onClick={()=> route.back()} className="absolute top-4 left-4 shadow-md p-1.5 rounded-full bg-white hover:scale-110 hover:shadow-lg">
         <ArrowLeft size={20} />
       </button>
       
@@ -142,7 +163,6 @@ export default function Page() {
                 </button>
               </div>
 
-              {/* Previsualizaciones de imágenes */}
               {selectedImages.length > 0 && (
                 <div className="flex w-full overflow-x-scroll gap-x-4 mt-4">
                   {selectedImages.map((img, index) => (

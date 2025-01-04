@@ -1,49 +1,10 @@
-"use client"
-
-import LoadingSpinner from "@/components/LoadingSpinner";
-import CalificationAndReviewTab from "@/components/projects/tabs/CalificationAndReviewTab";
-import DetailProjectTab from "@/components/projects/tabs/DetailProjectTab";
 import { Star, ArrowLeft, Heart } from "lucide-react";
-import { useState } from "react";
+import TabManager from "./TabManager";
+import getSession from "../../../../../../actions/verifySession";
 
-interface NavTab{
-    tabName: string;
-    value: string;
-}
-
-const tabs: NavTab[] = [{
-    tabName: "Detalles del producto",
-    value: "ProductDetail"
-}, 
-{
-    tabName: "Calificaciones y Reseñas",
-    value: "Reviews"
-}]
-
-export default function Page() {
-  const [currentTab, setCurrentTab] = useState<string>(tabs[0].value);
-  const [isLoading, setIsLoading] = useState(false);
-  const [fadeOut, setFadeOut] = useState(false);
-  
-
-  async function changeTab(value: string) {
-    if (currentTab === value) return;
-    
-    setFadeOut(true);
-    setIsLoading(true);
-    
-    // Wait for fade out animation
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    setCurrentTab(value);
-    
-    // Simulate loading time
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setIsLoading(false);
-    setFadeOut(false);
-  }
-
+export default async function Page() {
+  const {isAuthenticated}:any = await getSession();
+  console.log(isAuthenticated);
 
   return (
     <main className="max-w-7xl mx-auto p-6">
@@ -86,9 +47,9 @@ export default function Page() {
           {/* Header with title and like button */}
           <div className="flex justify-between items-start">
             <h1 className="text-3xl font-bold text-gray-900">InnovaRD</h1>
-            <button className="p-2 hover:bg-gray-100 rounded-full">
+            {isAuthenticated && <button className="p-2 hover:bg-gray-100 rounded-full">
               <Heart className="w-6 h-6" />
-            </button>
+            </button>}
           </div>
 
           {/* Rating */}
@@ -149,45 +110,23 @@ export default function Page() {
             <h3 className="font-semibold text-gray-900">Objetivo</h3>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-blue-600 h-2 rounded-full"
+                className="bg-[#152080] h-3 rounded-full"
                 style={{ width: "45%" }}
               ></div>
             </div>
             <div className="flex justify-end">
-              <span className="text-blue-600 font-semibold">45%</span>
+              <span className="text-[#152080] font-semibold">45%</span>
             </div>
           </div>
 
           {/* Support button */}
-          <button className="w-full bg-red-600 text-white py-3 rounded-lg hover:bg-red-700 transition-colors">
+          {isAuthenticated && <button className="w-full bg-[#CD1029] text-white py-3 rounded-[24px] hover:bg-red-700 transition-colors">
             Apoyar
-          </button>
+          </button>}
         </div>
       </section>
 
-      <div className="flex flex-grow mt-10">
-        {tabs.map(({tabName, value}, index) => (
-          <button 
-            key={index} 
-            onClick={() => changeTab(value)} 
-            className={`grow py-4 transition-[400ms] ${
-              currentTab === value 
-                ? 'border-b-2 border-blue-700 text-blue-700' 
-                : 'border-b-2 border-white text-slate-400'
-            }`}
-          >
-            {tabName}
-          </button>
-        ))}
-      </div>
-
-      <div className={`transition-opacity duration-200 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : (
-          currentTab === tabs[0].value ? <DetailProjectTab /> : <CalificationAndReviewTab />
-        )}
-      </div>
+      <TabManager/>
     </main>
   );
 }

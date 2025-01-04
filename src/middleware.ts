@@ -6,6 +6,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get('AccessToken')?.value;
   
+  
   // Redirect root to login
   if (pathname === '/') {
     return NextResponse.redirect(new URL('/login', request.url))
@@ -64,7 +65,10 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  response.headers.set('x-current-path', pathname);
+  
+  return response;
 }
 
 export const config = {
