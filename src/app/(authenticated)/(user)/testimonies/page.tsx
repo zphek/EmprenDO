@@ -13,6 +13,8 @@ export default function Page(){
 
                 <img src="" alt="" />    
             </div>
+
+            
         </section>
     </main>
 }
