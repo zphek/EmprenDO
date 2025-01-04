@@ -17,11 +17,13 @@ import { auth } from '@/firebase';
 import { authAdmin } from "@/firebaseAdmin"
 import { Toaster, toast } from 'react-hot-toast';
 import { createCookie } from '../../../../actions/createCookie';
+import { useRouter } from 'next/navigation';
 
 const LoginInterface = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
 
   const handleEmailLogin = async (e:any) => {
     e.preventDefault();
@@ -32,6 +34,10 @@ const LoginInterface = () => {
           // Intentar login
           const result = await signInWithEmailAndPassword(auth, email, password);
           await createCookie(await result?.user.getIdToken());
+
+          setTimeout(()=>{
+            router.push("/landing");
+          }, 2000);
 
           return result;
         } catch (error) {

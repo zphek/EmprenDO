@@ -1,85 +1,81 @@
 // middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { authAdmin } from '@/firebaseAdmin'
-
-interface TokenCache {
- [key: string]: {
-   decodedToken: any;
-   expiry: number;
- }
-}
-
-const tokenCache: TokenCache = {}
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutos en ms
-
-async function verifyToken(token: string) {
- const now = Date.now()
-
- if (tokenCache[token] && tokenCache[token].expiry > now) {
-   return tokenCache[token].decodedToken
- }
-
- try {
-   const decodedToken = await authAdmin.verifyIdToken(token)
-   tokenCache[token] = {
-     decodedToken,
-     expiry: now + CACHE_DURATION
-   }
-   return decodedToken
- } catch {
-   const response = NextResponse.next()
-   response.cookies.delete('AccessToken')
-   return null
- }
-}
 
 export async function middleware(request: NextRequest) {
- const { pathname } = request.nextUrl; 
-
- console.log(request.nextUrl);
-
- if (pathname == '/') {
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get('AccessToken')?.value;
+  
+  // Redirect root to login
+  if (pathname === '/') {
     return NextResponse.redirect(new URL('/login', request.url))
- }
+  }
 
- const token = request.cookies.get('AccessToken')?.value
- console.log(token, "xd");
+  // Define protected and public routes
+  const authenticatedRoutes = ['/favorites', '/library', '/mentors', '/projects']
+  const unauthenticatedRoutes = ['/login', '/register', '/retrieve']
 
- const session = token ? await verifyToken(token) : null;
+  // If there's a token, verify it
+  if (token) {
+    try {
+      const verificationResponse = await fetch(`http://localhost:3000/api/auth`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Cookie': `AccessToken=${token}`
+        },
+        credentials: 'include'
+      });
 
- 
- const authenticatedRoutes = ['/favorites', '/library', '/mentors', '/projects']
- const unauthenticatedRoutes = ['/login', '/register', '/retrieve']
- 
-//  console.log(unauthenticatedRoutes.includes(pathname));
+      const data = await verificationResponse.json();
+      console.log(data);
 
-//  return NextResponse.next()
+      if (data.isAuthenticated == false) {
+        // Si el token no es válido, creamos una respuesta que elimine la cookie
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('AccessToken');
+        
+        // Si estamos en una ruta protegida, redirigimos
+        if (authenticatedRoutes.some(route => pathname.startsWith(route))) {
+          return response;
+        }
+        
+        return response;
+      }
+    } catch (error) {
+      console.error('Error verificando token:', error);
+      // En caso de error, también eliminamos el token
+      const response = NextResponse.redirect(new URL('/login', request.url));
+      response.cookies.delete('AccessToken');
+      return response;
+    }
+  }
 
- if (authenticatedRoutes.includes(pathname)) {
-   if (!session) {
-     return NextResponse.redirect(new URL('/login', request.url))
-   }
- }
+  // Check authenticated routes access
+  if (authenticatedRoutes.some(route => pathname.startsWith(route))) {
+    if (!token) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
 
- if (unauthenticatedRoutes.includes(pathname)) {
-   if (session) {
-     return NextResponse.redirect(new URL('/landing', request.url))
-   }
- }
+  // Check unauthenticated routes access
+  if (unauthenticatedRoutes.includes(pathname)) {
+    if (token) {
+      return NextResponse.redirect(new URL('/landing', request.url));
+    }
+  }
 
- return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
- matcher: [
-   '/favorites/:path*',
-   '/library/:path*', 
-   '/mentors/:path*',
-   '/projects/:path*',
-   '/login',
-   '/register',
-   '/retrieve',
-   '/'
- ]
+  matcher: [
+    '/favorites/:path*',
+    '/library/:path*', 
+    '/mentors/:path*',
+    '/projects/create/:path*',
+    '/login',
+    '/register',
+    '/retrieve',
+    '/'
+  ]
 }
