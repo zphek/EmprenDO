@@ -3,17 +3,45 @@
 import { ArrowLeft, Linkedin, Image as ImageIcon, Lock, Shield, ChevronDown, X } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useActionState } from "react"
+import { createProject } from "../../../../../../actions/projectActions"
+import ImageUploadSection from "./ImageUploadSection"
+import LoadingSpinner from "@/components/LoadingSpinner"
+import CurrencyInput from "./CurrencyInput"
 
 export default function Page() {
   const route = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [data, action, isLoading] = useActionState(createProject, undefined);
   const [selectedImages, setSelectedImages] = useState([]);
   const [showSplash, setShowSplash] = useState(true);
-  const fileInputRef = useRef<any>(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [moneyValues, setMoneyValues] = useState({
+    moneyGoal: '',
+    minInvestmentAmount: ''
+  });
+
+  const handleMoneyChange = (e) => {
+    const { name, value } = e.target;
+    setMoneyValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+
+  const fileInputRef = useRef(null);
+
+  // Estado para los errores de validación
+  const [formErrors, setFormErrors] = useState({
+    categoryId: "",
+    projectObj: "",
+    projectDescription: "",
+    moneyGoal: "",
+    minInvestmentAmount: "",
+    ubication: "",
+  });
 
   useEffect(() => {
-    // Hide splash screen after 2 seconds
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 1500);
@@ -21,99 +49,154 @@ export default function Page() {
     return () => clearTimeout(timer);
   }, []);
 
-  const handlePublish = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-  };
+  // Efecto para manejar la respuesta del servidor
+  useEffect(() => {
+    if (data?.error) {
+      // Asumiendo que el mensaje de error viene en el formato "field:message"
+      const errorParts = data.message?.split(':');
+      if (errorParts?.length === 2) {
+        const [field, message] = errorParts;
+        setFormErrors(prev => ({
+          ...prev,
+          [field]: message
+        }));
+      }
+    } else if (data?.projectId) {
+      setShowSuccessPopup(true);
+      // Redirigir después de 2 segundos
+      setTimeout(() => {
+        route.push(`/projects/${data.projectId}`);
+      }, 2000);
+    }
+  }, [data, route]);
 
-  const handleImageSelection = (event:any) => {
-    const files = Array.from(event.target.files);
-    
-    const newImages = files.map((file:any) => ({
-      file,
-      preview: URL.createObjectURL(file)
-    }));
-    
-    setSelectedImages((prev: any) => [...prev, ...newImages]);
-  };
 
-  const removeImage = (index:any) => {
-    setSelectedImages(prev => {
-      const newImages = [...prev];
-      URL.revokeObjectURL(newImages[index].preview);
-      newImages.splice(index, 1);
-      return newImages;
+  const handleSubmit = async (formData: FormData) => {
+    // Resetear errores
+    setFormErrors({
+      categoryId: "",
+      projectObj: "",
+      projectDescription: "",
+      moneyGoal: "",
+      minInvestmentAmount: "",
+      ubication: "",
     });
-  };
 
-  const handleImageClick = () => {
-    fileInputRef.current?.click();
+    // Agregar las imágenes seleccionadas al FormData
+    formData.append('selectedImages', JSON.stringify(selectedImages));
   };
 
   if (showSplash) {
-    return (
-      <div className="fixed inset-0 bg-white flex items-center justify-center transition-opacity duration-500">
-        <div className="w-16 h-16 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin"></div>
-      </div>
-    );
+    return <LoadingSpinner/>
   }
 
-
   return ( 
-    <main className="w-full max-h-screen flex justify-center items-center overflow-hidden bg-white">
-      <button onClick={()=> route.back()} className="absolute top-4 left-4 shadow-md p-1.5 rounded-full bg-white hover:scale-110 hover:shadow-lg">
+    <main className="w-full min-h-screen flex justify-center items-center overflow-x-hidden bg-white">
+      {showSuccessPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div className="bg-white rounded-3xl w-full max-w-md mx-4 animate-[zoomIn_0.3s_ease-out]">
+          <div className="relative bg-[#152080] h-16 rounded-t-3xl flex items-center justify-end px-4">
+            <button
+              className="text-white hover:bg-white/10 rounded-full p-1 transition-colors"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          
+          <div className="p-8 text-center">
+            <div className="flex justify-center mb-6">
+              <img 
+                src="/images/emprendo-logo.png" 
+                alt="Emprendo Logo" 
+                className="h-8"
+              />
+            </div>
+            <p className="text-gray-600 text-lg">
+              Gracias por registrar un proyecto. Inicia tu aventura y conviertete en un gran emprendedor.
+            </p>
+          </div>
+        </div>
+      </div>
+      )}
+
+      <button 
+        onClick={()=> route.back()} 
+        className="absolute top-4 left-4 shadow-md p-1.5 rounded-full bg-white hover:scale-110 hover:shadow-lg"
+      >
         <ArrowLeft size={20} />
       </button>
       
-      <section className="w-full max-w-[840px] py-8 px-4">
+      <form action={action} className="w-full max-w-[840px] py-8 px-4">
         <h2 className="text-[2rem] text-[#152080] font-bold max-w-[500px] mb-8">
           Construye, Crea y Emprende Sin Límites
         </h2>
+
+        {/* Mensaje de error general */}
+        {data?.error && !data.message?.includes(':') && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <span className="block sm:inline">{data.message}</span>
+          </div>
+        )}
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 h-[80%] overflow-y-scroll">
           {/* Left Column */}
           <div className="flex flex-col gap-6">
+            <div>
+              <h3 className="text-gray-600 mb-2 text-sm">Categoría</h3>
+              <select 
+                name="categoryId"
+                className={`w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none text-gray-500 text-sm
+                  ${formErrors.categoryId ? 'border-2 border-red-500' : ''}`}
+                required
+              >
+                <option value="">Selecciona una categoría</option>
+                <option value="1">Tecnología</option>
+                <option value="2">Arte</option>
+                <option value="3">Educación</option>
+                <option value="4">Salud</option>
+              </select>
+              {formErrors.categoryId && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.categoryId}</p>
+              )}
+            </div>
+
             <div>
               <h3 className="text-gray-600 mb-2 text-sm">Nombre del proyecto</h3>
               <input 
                 type="text" 
+                name="projectObj"
                 placeholder="Escribe el nombre del proyecto"
-                className="w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none text-gray-500 text-sm"
+                className={`w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none text-gray-500 text-sm
+                  ${formErrors.projectObj ? 'border-2 border-red-500' : ''}`}
+                required
               />
+              {formErrors.projectObj && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.projectObj}</p>
+              )}
             </div>
 
             <div>
-              <h3 className="text-gray-600 mb-2 text-sm">Objetivos del proyecto</h3>
+              <h3 className="text-gray-600 mb-2 text-sm">Descripción del proyecto</h3>
               <textarea 
-                placeholder="Escribe el objetivo de tu proyecto"
+                name="projectDescription"
+                placeholder="Describe tu proyecto detalladamente"
                 rows={5} 
-                className="w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none resize-none text-gray-500 text-sm"
+                className={`w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none resize-none text-gray-500 text-sm
+                  ${formErrors.projectDescription ? 'border-2 border-red-500' : ''}`}
+                required
               />
+              {formErrors.projectDescription && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.projectDescription}</p>
+              )}
             </div>
 
-            {/* Payment Information */}
-            <div>
-              <h3 className="text-2xl text-[#6C6C6C] mb-3">Informaciones de Pago</h3>
-              <p className="text-gray-600 mb-2 text-sm">Método de pago</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button className="flex items-center gap-2 bg-[#F2F0F1] rounded-[20px] py-2 px-3">
-                  <div className="w-4 h-4 border border-gray-300 rounded-full flex-shrink-0" />
-                  <span className="text-gray-500 text-xs">Tarjeta de crédito</span>
-                </button>
-                <button className="flex items-center gap-2 bg-[#F2F0F1] rounded-[20px] py-2 px-3">
-                  <img src="/api/placeholder/16/16" alt="PayPal" className="w-4 h-4" />
-                  <span className="text-gray-500 text-xs">PayPal</span>
-                </button>
-                <button className="flex items-center gap-2 bg-[#F2F0F1] rounded-[20px] py-2 px-3">
-                  <img src="/api/placeholder/16/16" alt="Google Pay" className="w-4 h-4" />
-                  <span className="text-gray-500 text-xs">Google Pay</span>
-                </button>
-                <button className="flex items-center gap-2 bg-[#F2F0F1] rounded-[20px] py-2 px-3">
-                  <img src="/api/placeholder/16/16" alt="Apple Pay" className="w-4 h-4" />
-                  <span className="text-gray-500 text-xs">Apple Pay</span>
-                </button>
+            <div className="flex gap-4 mt-2">
+              <div className="flex flex-col gap-3 items-start bg-white">
+                <Lock className="mt-1 text-[#152080]" size={16} />
+                <div>
+                  <h4 className="font-medium text-gray-700 text-sm">Tu información está segura</h4>
+                  <p className="text-xs text-gray-500">No venderemos ni alquilaremos tu información de contacto personal para ningún propósito de marketing bajo ninguna circunstancia.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -123,7 +206,7 @@ export default function Page() {
             <div>
               <h3 className="text-gray-600 mb-2 text-sm">Redes sociales</h3>
               <div className="flex gap-2 items-center">
-                <button className="p-1.5 bg-[#F2F0F1] rounded-lg">
+                <button type="button" className="p-1.5 bg-[#F2F0F1] rounded-lg">
                   <Linkedin className="text-[#0077B7]" size={16} />
                 </button>
                 <input 
@@ -131,89 +214,53 @@ export default function Page() {
                   placeholder="Link"
                   className="flex-1 bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none text-gray-500 text-sm"
                 />
-                <button className="bg-[#DC1D3F] text-white px-4 py-2 rounded-[20px] text-xs font-medium">
+                <button type="button" className="bg-[#DC1D3F] text-white px-4 py-2 rounded-[20px] text-xs font-medium">
                   Agregar
                 </button>
               </div>
             </div>
 
-            <div>
-              <h3 className="text-gray-600 mb-2 text-sm">Imagenes</h3>
-              <div className="flex gap-2 items-center">
-                <div 
-                  onClick={handleImageClick}
-                  className="flex-1 flex gap-2 items-center bg-[#F2F0F1] rounded-[20px] py-2 px-4 cursor-pointer hover:bg-gray-200 transition-colors"
-                >
-                  <ImageIcon size={16} className="text-gray-500" />
-                  <span className="text-gray-500 text-sm">Selecciona tus imagenes</span>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handleImageSelection}
-                />
-                <button 
-                  onClick={handleImageClick}
-                  className="bg-[#DC1D3F] text-white px-4 py-2 rounded-[20px] text-xs font-medium"
-                >
-                  Seleccionar
-                </button>
-              </div>
+            <ImageUploadSection selectedImages={selectedImages} setSelectedImages={setSelectedImages} />
 
-              {selectedImages.length > 0 && (
-                <div className="flex w-full overflow-x-scroll gap-x-4 mt-4">
-                  {selectedImages.map((img, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={img.preview}
-                        alt={`Preview ${index + 1}`}
-                        className="min-w-full h-16 object-cover rounded-lg"
-                      />
-                      <button
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+            <div>
+              <h3 className="text-gray-600 mb-2 text-sm">Ubicación</h3>
+              <input 
+                type="text"
+                name="ubication"
+                placeholder="Ciudad, País"
+                className={`w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none text-gray-500 text-sm
+                  ${formErrors.ubication ? 'border-2 border-red-500' : ''}`}
+                required
+              />
+              {formErrors.ubication && (
+                <p className="text-red-500 text-xs mt-1">{formErrors.ubication}</p>
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <h3 className="text-gray-600 mb-2 text-sm">Ubicacion</h3>
-                <div className="relative">
-                  <select className="w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none appearance-none text-gray-500 text-sm">
-                    <option>Duracion estimada</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                </div>
-              </div>
-              <div>
-                <h3 className="text-gray-600 mb-2 text-sm">Duracion estimada</h3>
-                <div className="relative">
-                  <select className="w-full bg-[#F2F0F1] rounded-[20px] py-2 px-4 outline-none appearance-none text-gray-500 text-sm">
-                    <option>Duracion estimada</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                </div>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-gray-600 mb-2 text-sm">Meta de financiamiento</h3>
+              <CurrencyInput
+                name="moneyGoal"
+                value={moneyValues.moneyGoal}
+                onChange={handleMoneyChange}
+                error={formErrors.moneyGoal}
+                required
+              />
+            </div>
+            <div>
+              <h3 className="text-gray-600 mb-2 text-sm">Inversión mínima</h3>
+              <CurrencyInput
+                name="minInvestmentAmount"
+                value={moneyValues.minInvestmentAmount}
+                onChange={handleMoneyChange}
+                error={formErrors.minInvestmentAmount}
+                required
+              />
+            </div>
             </div>
 
-            {/* Security Information */}
             <div className="flex gap-4 mt-2">
-              <div className="flex flex-col gap-3 items-start bg-white">
-                <Lock className="mt-1 text-[#152080]" size={16} />
-                <div>
-                  <h4 className="font-medium text-gray-700 text-sm">Tu información está segura</h4>
-                  <p className="text-xs text-gray-500">No venderemos ni alquilaremos tu información de contacto personal para ningún propósito de marketing bajo ninguna circunstancia.</p>
-                </div>
-              </div>
               <div className="flex flex-col gap-3 items-start bg-white">
                 <Shield className="mt-1 text-[#152080]" size={16} />
                 <div>
@@ -226,7 +273,7 @@ export default function Page() {
         </div>
 
         <button 
-          onClick={handlePublish}
+          type="submit"
           disabled={isLoading}
           className="w-full bg-[#DC1D3F] text-white py-3 rounded-[20px] mt-8 font-medium disabled:opacity-75"
         >
@@ -239,7 +286,7 @@ export default function Page() {
             "Publicar"
           )}
         </button>
-      </section>
+      </form>
 
       <Image src={"/images/chinita_cualto.png"} height={400} width={500} alt="Cualto" className="hidden lg:block"/>
     </main>

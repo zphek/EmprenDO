@@ -2,8 +2,8 @@ import React from 'react';
 
 export default function LoadingSpinner() {
   return (
-    <div className="flex justify-center items-center min-h-[200px]">
-      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-700"></div>
+    <div className="fixed inset-0 bg-white flex items-center justify-center transition-opacity duration-500">
+      <div className="w-16 h-16 border-4 border-gray-200 border-t-gray-500 rounded-full animate-spin"></div>
     </div>
   );
 }
