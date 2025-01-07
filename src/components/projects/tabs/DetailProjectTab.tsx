@@ -1,55 +1,75 @@
-export default function DetailProjectTab() {
-    return (
-      <section className="max-w-4xl mx-auto py-8 space-y-8">
-        {/* Descripción General */}
+"use client";
+
+interface Project {
+  projectObj: string;
+  projectDescription: string;
+  founder?: string;
+  founderDescription?: string;
+  objective?: string;
+  mission?: string;
+  vision?: string;
+}
+
+export default function DetailProjectTab({ project }: { project: Project }) {
+  return (
+    <section className="w-full mx-auto py-8 space-y-8">
+      {/* Descripción General */}
+      <div className="space-y-3">
+        <h2 className="text-2xl font-bold text-blue-900">
+          {project.projectObj}
+        </h2>
+        <p className="text-gray-600 leading-relaxed">
+          {project.projectDescription}
+        </p>
+      </div>
+
+      {/* Fundador/a */}
+      {project.founder && (
         <div className="space-y-3">
-          <h2 className="text-2xl font-bold text-blue-900">
-            InnovaRD
-          </h2>
-          <p className="text-gray-600 leading-relaxed">
-            InnovaRD es una empresa especializada en el diseño, fabricación y desarrollo de drones personalizados para sectores industriales, agrícolas y de seguridad. Combinamos tecnología avanzada con soluciones innovadoras para ofrecer productos de alto rendimiento adaptados a las necesidades de nuestros clientes.
-          </p>
-        </div>
-  
-        {/* Fundador/a */}
-        <div className="space-y-3">
-          <h2 className="text-xl font-bold text-blue-900">
+          <h2 className="text-xl font-bold text-blue-900 text-wrap">
             Fundador/a
           </h2>
           <p className="text-gray-600 leading-relaxed">
-            María Pérez, fundadora de InnovaRD, es una emprendedora apasionada por la tecnología y la innovación. Con experiencia en ingeniería aeroespacial, lidera su empresa dedicada al diseño y construcción de drones personalizados. Actualmente, busca inversión para expandir su capacidad de producción y llevar soluciones tecnológicas avanzadas a nuevos mercados.
+            {project.founderDescription}
           </p>
         </div>
-  
-        {/* Objetivo Principal */}
+      )}
+
+      {/* Objetivo Principal */}
+      {project.objective && (
         <div className="space-y-3">
           <h2 className="text-xl font-bold text-blue-900">
             Objetivo Principal
           </h2>
           <p className="text-gray-600 leading-relaxed">
-            Desarrollar drones eficientes y personalizados que optimicen operaciones críticas en diferentes industrias, mejorando procesos mediante tecnología de vanguardia.
+            {project.objective}
           </p>
         </div>
-  
-        {/* Misión */}
+      )}
+
+      {/* Misión */}
+      {project.mission && (
         <div className="space-y-3">
           <h2 className="text-xl font-bold text-blue-900">
             Misión
           </h2>
-          <p className="text-gray-600 leading-relaxed">
-            Proporcionar soluciones aéreas inteligentes a través del desarrollo de drones innovadores, comprometidos con la calidad, sostenibilidad y el crecimiento tecnológico en cada sector al que servimos.
+          <p className="text-gray-600 leading-relaxed text-wrap">
+            {project.mission}
           </p>
         </div>
-  
-        {/* Visión */}
+      )}
+
+      {/* Visión */}
+      {project.vision && (
         <div className="space-y-3">
           <h2 className="text-xl font-bold text-blue-900">
             Visión
           </h2>
           <p className="text-gray-600 leading-relaxed">
-            Ser líderes en la industria de drones a nivel regional, reconocidos por nuestra capacidad de innovación, calidad en el servicio y contribución al desarrollo tecnológico sostenible.
+            {project.vision}
           </p>
         </div>
-      </section>
-    );
-  }
+      )}
+    </section>
+  );
+}

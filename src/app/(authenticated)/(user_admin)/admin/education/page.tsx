@@ -146,8 +146,8 @@ const EducationalResources = () => {
 
   // Filtrar recursos
   const filteredResources = resources
-    .filter(resource => filterValue === 'all' || resource.erTypeld === filterValue)
-    .filter(resource => 
+    .filter((resource:any) => filterValue === 'all' || resource.erTypeld === filterValue)
+    .filter((resource:any) => 
       resource.erTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       resource.erDescription.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -163,7 +163,7 @@ const EducationalResources = () => {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto min-h-screen">
+    <div className="p-8 w-full min-h-screen max-h-screen overflow-y-scroll">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-blue-900 mb-6">Gestionar Recursos Educativos</h1>
         
@@ -218,7 +218,7 @@ const EducationalResources = () => {
           </div>
         ) : (
           <>
-            {paginatedResources.map((resource) => (
+            {paginatedResources.map((resource:any) => (
               <div key={resource.erld} className="bg-white border rounded-lg shadow-sm">
                 <div className="p-6">
                   <div className="flex justify-between items-start">

@@ -7,12 +7,12 @@ const MentorSlides = [
     {
         titulo: "Encuentra tu camino al éxito con las mentorías",
         subtitulo: "Conoce la diversidad de mentores que tenemos en EmprenDO para impulsar tu negocio y juntos lograr el éxito.",
-        imageUrl: ""
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/emprendo-17910.firebasestorage.app/o/generics%2Farchitects-making-thumbs-up-gesture-removebg-preview%201.png?alt=media&token=d0a6737a-f4a3-47e3-a695-330b87f5a672"
     },
     {
         titulo: "Encuentra tu camino al éxito con las mentorías",
         subtitulo: "Conoce la diversidad de mentores que tenemos en EmprenDO para impulsar tu negocio y juntos lograr el éxito.",
-        imageUrl: ""
+        imageUrl: "https://firebasestorage.googleapis.com/v0/b/emprendo-17910.firebasestorage.app/o/generics%2Farchitects-making-thumbs-up-gesture-removebg-preview%201.png?alt=media&token=d0a6737a-f4a3-47e3-a695-330b87f5a672"
     }
 ];
 

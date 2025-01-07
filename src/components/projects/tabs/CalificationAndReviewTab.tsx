@@ -1,7 +1,8 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Star, MoreVertical } from 'lucide-react';
 
-// Review type definition
 interface Review {
   id: number;
   author: string;
@@ -11,7 +12,6 @@ interface Review {
   verified?: boolean;
 }
 
-// Sample review data
 const sampleReviews: Review[] = [
   {
     id: 1,

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import getSession from "../../../actions/verifySession";
+import getSession from "../../../../actions/verifySession";
 import { headers } from "next/headers";
+import AdminDashboard from "./admin/dashboard/page";
+import AdminSidebar from "@/components/AdminSidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,20 +29,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headerList = headers();
-  const pathname = (await headerList).get("x-current-path") || '';
-  const showLayout = !noLayoutRoutes.includes(pathname);
-  console.log(pathname, "xddddddddddddddd")
-  const isAuthenticated = await getSession();
-
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {showLayout && <Navbar isAuthenticated={isAuthenticated?.isAuthenticated ?? true} />}
-        {children}
-        {showLayout && <Footer />}
+        <main className="w-full flex">
+          <AdminSidebar/>
+          {children}
+        </main>
       </body>
     </html>
   );

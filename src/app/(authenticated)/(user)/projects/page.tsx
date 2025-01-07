@@ -58,7 +58,7 @@ const CareerPathsUI = () => {
         // Obtener categorías
         const categoriesCollection = collection(db, 'category');
         const categorySnapshot = await getDocs(categoriesCollection);
-        const categoryList = categorySnapshot.docs.map(doc => ({
+        const categoryList:any = categorySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
@@ -68,7 +68,7 @@ const CareerPathsUI = () => {
         const projectsCollection = collection(db, 'projects');
         const projectsQuery = query(projectsCollection, orderBy('createdAt', 'desc'));
         const projectSnapshot = await getDocs(projectsQuery);
-        const projectList = projectSnapshot.docs.map(doc => ({
+        const projectList:any = projectSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));

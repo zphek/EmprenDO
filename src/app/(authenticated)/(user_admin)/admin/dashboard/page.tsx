@@ -31,46 +31,7 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-64 bg-blue-900 text-white p-6">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-24 h-24 rounded-full bg-white mb-4">
-            <img
-              src="/api/placeholder/96/96"
-              alt="Profile"
-              className="w-24 h-24 rounded-full"
-            />
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-300">Bienvenida</p>
-            <h2 className="font-semibold">Priscilla Castro</h2>
-            <p className="text-xs text-gray-300">Administrador Emprendur</p>
-          </div>
-        </div>
-
-        <nav className="space-y-4">
-          <a href="#" className="flex items-center space-x-3 text-gray-300 hover:text-white">
-            <BarChart2 className="w-5 h-5" />
-            <span>Dashboard</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 text-gray-300 hover:text-white">
-            <Users className="w-5 h-5" />
-            <span>Gestionar usuarios</span>
-          </a>
-          <a href="#" className="flex items-center space-x-3 text-gray-300 hover:text-white">
-            <Users className="w-5 h-5" />
-            <span>Gestionar mentores</span>
-          </a>
-          <div className="pt-8">
-            <a href="#" className="flex items-center space-x-3 text-gray-300 hover:text-white">
-              <LogOut className="w-5 h-5" />
-              <span>Cerrar Sesión</span>
-            </a>
-          </div>
-        </nav>
-      </div>
-
+    <div className="flex min-h-screen w-full max-h-screen overflow-y-scroll bg-gray-100">
       {/* Main content */}
       <div className="flex-1 p-8">
         <div className="mb-8">
