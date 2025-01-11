@@ -4,14 +4,14 @@ import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage"
 
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MId
-};
+    apiKey: "AIzaSyDh7a6l9p_fy_m0gA8fiwYcpmP0XXwuZxU",
+    authDomain: "emprendo-17910.firebaseapp.com",
+    projectId: "emprendo-17910",
+    storageBucket: "emprendo-17910.firebasestorage.app",
+    messagingSenderId: "1031480096938",
+    appId: "1:1031480096938:web:5c25a16a15a4c8aed338d3",
+    measurementId: "G-LERK2NFL2V"
+  };
 
 const app = initializeApp(firebaseConfig);
 
