@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { FileText, Video, Presentation, File, Download, ExternalLink, Search } from 'lucide-react';
 import { db } from '@/firebase';
 import { 
   collection, 
@@ -11,71 +11,128 @@ import {
 } from 'firebase/firestore';
 
 const ResourceCard = ({ resource }: any) => {
-  const getDefaultThumbnail = (type: string) => {
-    switch (type) {
-      case "1":
-        return "/icons/video-thumbnail.png";
-      case "2":
-        return "/icons/doc-thumbnail.png";
-      case "3":
-        return "/icons/presentation-thumbnail.png";
-      default:
-        return "/icons/file-thumbnail.png";
+  const getFileExtension = (url: string) => {
+    if (!url) return '';
+    try {
+      // Extraer solo la extensión real del archivo sin parámetros
+      const urlPath = new URL(url).pathname;
+      const ext = urlPath.split('.').pop()?.split('?')[0];
+      return ext ? ext.toLowerCase() : '';
+    } catch {
+      // Si la URL no es válida, intentar extraer la extensión de manera simple
+      const parts = url.split('.');
+      return parts[parts.length - 1].split('?')[0].toLowerCase();
     }
   };
 
+  const getFileTypeInfo = (type: string, url: string) => {
+    const extension = getFileExtension(url);
+    switch (type) {
+      case "1":
+        return {
+          icon: Video,
+          color: "bg-red-50",
+          textColor: "text-red-600",
+          borderColor: "border-red-100",
+          badgeColor: "bg-red-100",
+          label: "VIDEO",
+          extension: extension || "MP4"
+        };
+      case "2":
+        return {
+          icon: FileText,
+          color: "bg-blue-50",
+          textColor: "text-blue-600",
+          borderColor: "border-blue-100",
+          badgeColor: "bg-blue-100",
+          label: "DOC",
+          extension: extension || "PDF"
+        };
+      case "3":
+        return {
+          icon: Presentation,
+          color: "bg-purple-50",
+          textColor: "text-purple-600",
+          borderColor: "border-purple-100",
+          badgeColor: "bg-purple-100",
+          label: "PRES",
+          extension: extension || "PPT"
+        };
+      case "4":
+        return {
+          icon: File,
+          color: "bg-green-50",
+          textColor: "text-green-600",
+          borderColor: "border-green-100",
+          badgeColor: "bg-green-100",
+          label: "TEMPLATE",
+          extension: extension || "DOCX"
+        };
+      default:
+        return {
+          icon: File,
+          color: "bg-gray-50",
+          textColor: "text-gray-600",
+          borderColor: "border-gray-100",
+          badgeColor: "bg-gray-100",
+          label: "FILE",
+          extension: extension || "DOC"
+        };
+    }
+  };
+
+  const fileInfo = getFileTypeInfo(resource.erTypeld, resource.erUrlFile);
+  const IconComponent = fileInfo.icon;
+
   return (
-    <div className="flex flex-col">
-      <div className="relative group">
-        <img
-          src={getDefaultThumbnail(resource.erTypeld)}
-          alt={resource.erTitle}
-          className="w-full aspect-[4/3] object-cover rounded-lg shadow-md"
-        />
-        <a
-          href={resource.erUrlFile}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300"
-        >
-          <div className="transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300">
-            <button className="bg-white text-gray-800 px-4 py-2 rounded-full font-medium">
-              Descargar
-            </button>
+    <div className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 overflow-hidden">
+      <div className={`relative h-40 ${fileInfo.color} p-6 flex flex-col items-center justify-center border-b ${fileInfo.borderColor}`}>
+        <IconComponent className={`w-12 h-12 ${fileInfo.textColor}`} />
+        <span className={`mt-2 text-xs font-medium uppercase ${fileInfo.textColor}`}>
+          {fileInfo.extension}
+        </span>
+        
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300">
+          <div className="transform translate-y-4 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition-all duration-300 flex gap-2">
+            <a
+              href={resource.erUrlFile}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white/90 text-gray-700 p-2 rounded-lg hover:bg-white transition-colors shadow-sm"
+              title="Abrir"
+            >
+              <ExternalLink className="w-5 h-5" />
+            </a>
+            <a
+              href={resource.erUrlFile}
+              download
+              className="bg-white/90 text-gray-700 p-2 rounded-lg hover:bg-white transition-colors shadow-sm"
+              title="Descargar"
+            >
+              <Download className="w-5 h-5" />
+            </a>
           </div>
-        </a>
+        </div>
       </div>
-      <div className="mt-4">
-        <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">
-          {resource.erTitle}
-        </h3>
-        <p className="text-sm text-gray-500 mt-1">
-          {resource.erDescription}
-        </p>
-        <div className="flex items-center justify-between mt-2">
+
+      <div className="p-4">
+        <div className="flex items-start gap-2">
+          <h3 className="text-sm font-semibold text-gray-900 line-clamp-1 flex-1">
+            {resource.erTitle}
+          </h3>
+          <span className={`text-xs px-2 py-0.5 rounded-full ${fileInfo.badgeColor} ${fileInfo.textColor} font-medium shrink-0`}>
+            {fileInfo.label}
+          </span>
+        </div>
+        {resource.erDescription && (
+          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+            {resource.erDescription}
+          </p>
+        )}
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
           <span className="text-xs text-gray-500">
             {new Date(resource.createdAt).toLocaleDateString()}
           </span>
-          <a 
-            href={resource.erUrlFile}
-            download
-            className="text-blue-600 hover:text-blue-800"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-          </a>
         </div>
       </div>
     </div>
@@ -115,7 +172,7 @@ const EducationResources = () => {
   );
 
   const documentResources = filteredResources.filter((resource: any) => 
-    resource.erTypeld !== "4" // Asumiendo que 4 es el tipo para plantillas
+    resource.erTypeld !== "4"
   );
 
   const templateResources = filteredResources.filter((resource: any) => 
@@ -155,7 +212,7 @@ const EducationResources = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(8)].map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 aspect-[4/3] rounded-lg mb-4"></div>
+              <div className="bg-gray-200 h-40 rounded-lg mb-4"></div>
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
               <div className="h-3 bg-gray-200 rounded w-1/2"></div>
             </div>

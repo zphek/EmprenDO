@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BarChart2, 
   Users, 
@@ -13,12 +13,38 @@ import {
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { userLogOut } from '../../actions/userActions';
+import { userLogOut, getDbUser } from '../../actions/userActions';
 import { auth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
-const AdminSidebar = ({ userName = "Priscilla Castro", userRole = "Administrador Emprendur" }) => {
+const AdminSidebar = () => {
   const router = useRouter();
+  const [userData, setUserData] = useState({
+    name: '',
+    role: ''
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await getDbUser();
+        if (response.success && response.data) {
+          setUserData({
+            name: response.data.name || 'Usuario',
+            role: response.data.role || 'Usuario'
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const menuItems = [
     { 
       icon: <BarChart2 className="w-5 h-5" />, 
@@ -69,7 +95,7 @@ const AdminSidebar = ({ userName = "Priscilla Castro", userRole = "Administrador
           <div className="w-24 h-24 rounded-full bg-white mb-4 overflow-hidden">
             <Image
               src="/api/placeholder/96/96"
-              alt={`Foto de perfil de ${userName}`}
+              alt={`Foto de perfil de ${userData.name}`}
               width={96}
               height={96}
               className="w-full h-full object-cover"
@@ -77,9 +103,18 @@ const AdminSidebar = ({ userName = "Priscilla Castro", userRole = "Administrador
             />
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-300">Bienvenid@</p>
-            <h2 className="font-semibold">{userName}</h2>
-            <p className="text-xs text-gray-300">{userRole}</p>
+            {isLoading ? (
+              <div className="space-y-2">
+                <div className="h-4 w-24 bg-blue-800 rounded animate-pulse"></div>
+                <div className="h-3 w-20 bg-blue-800 rounded animate-pulse"></div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-300">Bienvenid@</p>
+                <h2 className="font-semibold">{userData.name}</h2>
+                <p className="text-xs text-gray-300">{userData.role}</p>
+              </>
+            )}
           </div>
         </div>
 

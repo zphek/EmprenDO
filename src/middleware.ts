@@ -13,8 +13,9 @@ export async function middleware(request: NextRequest) {
   // Define routes by role
   const adminRoutes = ['/admin']
   const mentorRoutes = ['/mentorship']
-  const authenticatedRoutes = ['/favorites', '/library', '/mentors', '/projects', '/settings', '/profile', '/landing']
+  const authenticatedRoutes = ['/favorites', '/library', '/mentors', '/settings', '/profile'] // Removed /landing and /projects
   const unauthenticatedRoutes = ['/login', '/register', '/retrieve']
+  const publicRoutes = ['/landing', '/projects'] // New array for public routes
 
   // If there's no token and trying to access protected routes, redirect to login
   if (!token) {
@@ -82,7 +83,7 @@ export async function middleware(request: NextRequest) {
         break;
       
       case 'normal':
-        // Normal users can only access authenticated routes
+        // Normal users can access authenticated routes and public routes
         if (adminRoutes.some(route => pathname.startsWith(route)) || 
             mentorRoutes.some(route => pathname.startsWith(route))) {
           return NextResponse.redirect(new URL('/landing', request.url));

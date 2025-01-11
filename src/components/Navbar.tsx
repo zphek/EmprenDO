@@ -10,12 +10,12 @@ import Link from 'next/link';
 const UnAuthenticatedNavbar = () => (
   <ul className="flex items-center gap-6">
     <li>
-      <a href="#" className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200">
+      <a href="/projects" className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200">
         Inicio
       </a>
     </li>
     <li>
-      <a href="#" className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200">
+      <a href="/landing" className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200">
         Sobre nosotros
       </a>
     </li>
@@ -348,8 +348,8 @@ const Navbar = ({ isAuthenticated = false }) => {
             </div>
           ) : (
             <div className="flex flex-col space-y-4">
-              <a href="#" className="text-gray-600 hover:text-gray-900 font-medium">Inicio</a>
-              <a href="#" className="text-gray-600 hover:text-gray-900 font-medium">Sobre nosotros</a>
+              <a href="/projects" className="text-gray-600 hover:text-gray-900 font-medium">Inicio</a>
+              <a href="/landing" className="text-gray-600 hover:text-gray-900 font-medium">Sobre nosotros</a>
               <a 
                 href="/login" 
                 className="text-blue-600 hover:bg-blue-50 font-medium px-4 py-2 rounded-lg text-center"
