@@ -18,7 +18,7 @@ export default function DetailProjectTab({ project }: { project: Project }) {
         <h2 className="text-2xl font-bold text-blue-900">
           {project.projectObj}
         </h2>
-        <p className="text-gray-600 leading-relaxed">
+        <p className="text-gray-600 leading-relaxed break-words">
           {project.projectDescription}
         </p>
       </div>
@@ -29,7 +29,7 @@ export default function DetailProjectTab({ project }: { project: Project }) {
           <h2 className="text-xl font-bold text-blue-900 text-wrap">
             Fundador/a
           </h2>
-          <p className="text-gray-600 leading-relaxed">
+          <p className="text-gray-600 leading-relaxed break-words">
             {project.founderDescription}
           </p>
         </div>
@@ -41,7 +41,7 @@ export default function DetailProjectTab({ project }: { project: Project }) {
           <h2 className="text-xl font-bold text-blue-900">
             Objetivo Principal
           </h2>
-          <p className="text-gray-600 leading-relaxed">
+          <p className="text-gray-600 leading-relaxed break-words">
             {project.objective}
           </p>
         </div>
@@ -53,7 +53,7 @@ export default function DetailProjectTab({ project }: { project: Project }) {
           <h2 className="text-xl font-bold text-blue-900">
             Misión
           </h2>
-          <p className="text-gray-600 leading-relaxed text-wrap">
+          <p className="text-gray-600 leading-relaxed text-wrap break-words">
             {project.mission}
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function DetailProjectTab({ project }: { project: Project }) {
           <h2 className="text-xl font-bold text-blue-900">
             Visión
           </h2>
-          <p className="text-gray-600 leading-relaxed">
+          <p className="text-gray-600 leading-relaxed break-words">
             {project.vision}
           </p>
         </div>

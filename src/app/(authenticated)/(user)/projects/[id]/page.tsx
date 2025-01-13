@@ -1,58 +1,116 @@
 import { Star, ArrowLeft, Heart } from "lucide-react";
 import TabManager from "./TabManager";
 import getSession from "../../../../../../actions/verifySession";
+import { db } from "@/firebase";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import SupportDialog from './SupportDialog';
+import FavoriteButton from "./FavoriteButton";
 
-export default async function Page() {
-  const {isAuthenticated}:any = await getSession();
-  console.log(isAuthenticated);
+async function getProjectData(projectId:any) {
+  console.log(projectId);
+  try {
+    // Obtener los datos del proyecto
+    const projectRef = doc(db, "projects", projectId);
+    const projectSnap = await getDoc(projectRef);
+    
+    console.log(projectSnap.exists());
+    
+    if (!projectSnap.exists()) {
+      throw new Error('Project not found');
+    }
+
+    const projectData = projectSnap.data();
+
+    // // Obtener los datos del autor
+    // const userRef = doc(db, "users", projectData.userId);
+    // const userSnap = await getDoc(userRef);
+    // const userData = userSnap.exists() ? userSnap.data() : {};
+
+    // Obtener el total invertido
+    const investmentsRef = collection(db, "investments");
+    const investmentsQuery = query(investmentsRef, where("projectId", "==", projectId));
+    const investmentsSnap = await getDocs(investmentsQuery);
+
+    console.log("XD")
+    
+    const totalInvested = investmentsSnap.docs.reduce((sum, doc) => {
+      return sum + (doc.data().amount || 0);
+    }, 0);
+
+    // Obtener las imágenes del proyecto
+    const imagesRef = collection(db, "project_images");
+    const imagesQuery = query(imagesRef, where("projectId", "==", projectId));
+    const imagesSnap = await getDocs(imagesQuery);
+    const images = imagesSnap.docs.map(doc => doc.data());
+
+    return {
+      ...projectData,
+      projectId,
+      author_name: 'Usuario Anónimo',
+      author_image: 'XD',
+      total_invested: totalInvested,
+      images
+    };
+  } catch (error) {
+    console.error('Error fetching project:', error);
+    throw new Error('Failed to fetch project data');
+  }
+}
+
+export default async function Page({ params } : any) {
+  const {isAuthenticated, user}:any = await getSession();
+  const id = await params.id;
+  const projectData:any = await getProjectData(await params.id);
+  
+  const progressPercentage = Math.min(
+    Math.round((projectData.total_invested / projectData.moneyGoal) * 100),
+    100
+  );
 
   return (
     <main className="max-w-7xl mx-auto p-6">
-      {/* Back button */}
-      <button className="mb-6">
+      <a href='/projects' className="mb-6">
         <ArrowLeft className="w-6 h-6" />
-      </button>
+      </a>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left side - Images */}
+    
         <div className="grid grid-cols-5 gap-4">
-          {/* Thumbnail gallery */}
           <div className="col-span-1 space-y-4">
-            {[1, 2, 3].map((index) => (
+            {projectData.images?.slice(0, 3).map((image:any, index:any) => (
               <div
                 key={index}
                 className="aspect-square w-full rounded-lg overflow-hidden bg-gray-100"
               >
                 <img
-                  src="/api/placeholder/150/150"
-                  alt={`Thumbnail ${index}`}
+                  src={image.image_url || "/api/placeholder/150/150"}
+                  alt={`Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
               </div>
             ))}
           </div>
 
-          {/* Main image */}
           <div className="col-span-4 aspect-[4/3] rounded-lg overflow-hidden bg-gray-100">
             <img
-              src="/api/placeholder/600/450"
+              src={projectData.images?.[0]?.image_url || "/api/placeholder/600/450"}
               alt="Main product"
               className="w-full h-full object-cover"
             />
           </div>
         </div>
 
-        {/* Right side - Product info */}
+        
         <div className="space-y-6">
-          {/* Header with title and like button */}
           <div className="flex justify-between items-start">
-            <h1 className="text-3xl font-bold text-gray-900">InnovaRD</h1>
-            {isAuthenticated && <button className="p-2 hover:bg-gray-100 rounded-full">
-              <Heart className="w-6 h-6" />
-            </button>}
+            <h1 className="text-3xl font-bold text-gray-900">
+              {projectData.projectObj}
+            </h1>
+            {isAuthenticated && (
+              <FavoriteButton projectId={id} userId={user.userId} />
+            )}
           </div>
 
-          {/* Rating */}
           <div className="flex items-center gap-2">
             <div className="flex">
               {[1, 2, 3, 4, 5].map((_, index) => (
@@ -68,65 +126,58 @@ export default async function Page() {
             <span className="text-sm font-medium text-gray-600">4.5/5</span>
           </div>
 
-          {/* Author */}
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-gray-200 overflow-hidden">
               <img
-                src="/api/placeholder/32/32"
-                alt="María Rosario"
+                src={projectData.author_image || "/api/placeholder/32/32"}
+                alt={projectData.author_name}
                 className="w-full h-full object-cover"
               />
             </div>
-            <h3 className="font-medium text-gray-900">María Rosario</h3>
+            <h3 className="font-medium text-gray-900">{projectData.author_name}</h3>
           </div>
 
-          {/* Description */}
           <div className="bg-blue-50 p-4 rounded-lg text-blue-800">
-            <p>
-              InnovaRD diseña y construye drones personalizados para aplicaciones
-              industriales, agrícolas y de seguridad.
-            </p>
+            <p className="break-words">{projectData.projectDescription}</p>
           </div>
 
-          {/* Values */}
           <div className="space-y-3">
             <h3 className="font-semibold text-gray-900">Valores</h3>
             <div className="flex flex-wrap gap-2">
-              {["Honestidad", "Perseverancia", "Responsabilidad"].map(
-                (value, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600"
-                  >
-                    {value}
-                  </span>
-                )
-              )}
+              {(projectData.values || []).map((value:any, index:any) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600"
+                >
+                  {value}
+                </span>
+              ))}
             </div>
           </div>
 
-          {/* Objective */}
           <div className="space-y-3">
             <h3 className="font-semibold text-gray-900">Objetivo</h3>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-[#152080] h-3 rounded-full"
-                style={{ width: "45%" }}
+                className="bg-[#152080] h-2 rounded-full"
+                style={{ width: `${progressPercentage}%` }}
               ></div>
             </div>
-            <div className="flex justify-end">
-              <span className="text-[#152080] font-semibold">45%</span>
+            <div className="flex justify-between">
+              <span className="text-gray-600">
+                ${projectData.total_invested.toLocaleString()}
+              </span>
+              <span className="text-[#152080] font-semibold">
+                {progressPercentage}%
+              </span>
             </div>
           </div>
 
-          {/* Support button */}
-          {isAuthenticated && <button className="w-full bg-[#CD1029] text-white py-3 rounded-[24px] hover:bg-red-700 transition-colors">
-            Apoyar
-          </button>}
+          {isAuthenticated && <SupportDialog/>}
         </div>
       </section>
 
-      <TabManager/>
+      <TabManager />
     </main>
   );
 }

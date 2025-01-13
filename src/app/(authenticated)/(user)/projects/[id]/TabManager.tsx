@@ -5,7 +5,7 @@ import CalificationAndReviewTab from "@/components/projects/tabs/CalificationAnd
 import DetailProjectTab from "@/components/projects/tabs/DetailProjectTab";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { auth, db } from '@/firebase';
 import { useParams } from "next/navigation";
 
 interface NavTab {
@@ -25,7 +25,9 @@ const tabs: NavTab[] = [
 ];
 
 export default function TabManager() {
-  const params = useParams();
+  const params:any = useParams();
+  const id:any = params.id;
+  const user = auth.currentUser;
   const [currentTab, setCurrentTab] = useState<string>(tabs[0].value);
   const [isLoading, setIsLoading] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
@@ -98,7 +100,7 @@ export default function TabManager() {
         ) : (
           currentTab === tabs[0].value ? 
             <DetailProjectTab project={projectData} /> : 
-            <CalificationAndReviewTab />
+            <CalificationAndReviewTab projectId={id} currentUser={user} />
         )}
       </div>
     </>
