@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const noLayoutRoutes = ["/projects/create"]
+const noLayoutRoutes = ["/projects/create", "/profile"]
 
 export const metadata: Metadata = {
   title: "Create Next App",

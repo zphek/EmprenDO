@@ -1,109 +1,244 @@
-import React from 'react';
+"use client"
+
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Search, Heart } from 'lucide-react';
+import { Search, Star, StarHalf, Heart } from 'lucide-react';
+import { db } from '@/firebase';
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs,
+  orderBy,
+  deleteDoc 
+} from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import getSession from '../../../../../actions/verifySession';
 
-const ProjectCard = ({ title, rating, author, isFavorite }: any) => (
-  <Card className="overflow-hidden">
-    <div className="relative">
-      <img
-        src="/api/placeholder/400/300"
-        alt={title}
-        className="w-full h-48 object-cover rounded-t-lg"
-      />
-    </div>
-    <CardContent className="p-4">
-      <div className="flex justify-between items-start relative">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="absolute -top-2 -right-2 hover:bg-white/50"
-      >
-        <Heart 
-          className={`h-14 w-14 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white'}`}
-        />
-      </Button>
-
-        <div>
-          <h3 className="font-semibold">{title}</h3>
-          <div className="flex items-center space-x-1 mt-1">
-            <span className="text-sm text-gray-600">{rating}</span>
-            <div className="flex">
-              {[...Array(5)].map((_, i) => (
-                <svg
-                  key={i}
-                  className={`w-4 h-4 ${
-                    i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'
-                  }`}
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-              ))}
-            </div>
-          </div>
-          <p className="text-sm text-gray-600 mt-1">{author}</p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const FavoritesPage = () => {
-  const projects = [
-    { id: 1, title: 'InnovaRD', rating: 4.5, author: 'María Rosario', isFavorite: true },
-    { id: 2, title: 'EcoPack', rating: 3.8, author: 'María Rosario', isFavorite: true },
-    { id: 3, title: 'GenStart', rating: 4.2, author: 'María Rosario', isFavorite: true },
-    { id: 4, title: 'Emprendix', rating: 4.7, author: 'María Rosario', isFavorite: true }
-  ];
-
-  return (
-    <div className="max-w-7xl mx-auto p-6">
-      <h1 className="text-2xl font-bold text-blue-900 mb-6">Mis favoritos</h1>
-      
-      {/* Search bar */}
-      <div className="flex gap-2 mb-8">
-        <div className="relative flex-1">
-          <Input
-            placeholder="Search for products..."
-            className="pl-10 bg-gray-50 rounded-2xl"
-          />
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-        </div>
-        <Button variant="outline">
-          Filter
-        </Button>
-      </div>
-
-      {/* Favorites Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {projects.map(project => (
-          <ProjectCard key={project.id} {...project} />
-        ))}
-      </div>
-
-      {/* Duplicate grid for demonstration */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {projects.map(project => (
-          <ProjectCard key={`dup-${project.id}`} {...project} />
-        ))}
-      </div>
-
-      {/* Recommendations Section */}
-      <section className="mt-16">
-        <h2 className="text-2xl font-bold text-blue-900 mb-4">Recomendados</h2>
-        <p className="text-gray-600 mb-6">
-          Basado en tus preferencias, hemos seleccionado proyectos que reflejan tus
-          intereses y pasión por el crecimiento.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {projects.map(project => (
-            <ProjectCard key={`rec-${project.id}`} {...project} />
+const SkeletonCard = () => (
+  <div className="bg-white rounded-xl overflow-hidden animate-pulse">
+    <div className="w-full h-48 bg-gray-200"/>
+    <div className="p-5">
+      <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"/>
+      <div className="flex items-center gap-x-2 mb-4">
+        <div className="h-3 bg-gray-200 rounded w-12"/>
+        <div className="flex gap-1">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="w-4 h-4 bg-gray-200 rounded"/>
           ))}
         </div>
-      </section>
+      </div>
+      <div className="h-3 bg-gray-200 rounded w-1/2"/>
+    </div>
+  </div>
+);
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('es-DO', {
+    style: 'currency',
+    currency: 'DOP',
+    minimumFractionDigits: 0
+  }).format(amount);
+};
+
+const FavoritesPage = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [savedProjects, setSavedProjects] = useState<any[]>([]);
+  const [filteredProjects, setFilteredProjects] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
+  
+  // TODO: Reemplazar con tu sistema de autenticación
+  const [userId, setUserId] = useState<any>("123"); // Temporal - Usar tu sistema de auth
+
+  useEffect(() => {
+
+    async function fetchUserId(){
+      const {user}:any = await getSession();
+      setUserId(user.uid);
+    }
+
+    fetchUserId();
+
+    const fetchSavedProjects = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Obtener los IDs de proyectos guardados
+        const savedProjectsRef = collection(db, "saved_projects");
+        const savedQuery = query(
+          savedProjectsRef,
+          where("userId", "==", userId),
+          orderBy("savedAt", "desc")
+        );
+        const savedSnapshot = await getDocs(savedQuery);
+        const savedProjectIds = savedSnapshot.docs.map(doc => ({
+          savedId: doc.id,
+          projectId: doc.data().projectId
+        }));
+
+        // Obtener los detalles de los proyectos guardados
+        const projectsRef = collection(db, "projects");
+        const projectPromises = savedProjectIds.map(async ({ savedId, projectId }) => {
+          const projectQuery = query(projectsRef, where("__name__", "==", projectId));
+          const projectSnapshot = await getDocs(projectQuery);
+          const projectData = projectSnapshot.docs[0]?.data();
+          return { 
+            ...projectData, 
+            id: projectId,
+            savedId: savedId,
+            isSaved: true
+          };
+        });
+
+        const projectsData = await Promise.all(projectPromises);
+        setSavedProjects(projectsData);
+        setFilteredProjects(projectsData);
+      } catch (error) {
+        console.error("Error fetching saved projects:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchSavedProjects();
+  }, [userId]);
+
+  useEffect(() => {
+    const filtered = savedProjects.filter(project =>
+      project.projectObj?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredProjects(filtered);
+  }, [searchTerm, savedProjects]);
+
+  const handleRemoveFavorite = async (savedId: string, projectId: string) => {
+    try {
+      // Eliminar de Firestore
+      const savedProjectsRef = collection(db, "saved_projects");
+      await deleteDoc(doc(savedProjectsRef, savedId));
+      
+      // Actualizar estado local
+      setSavedProjects(prev => prev.filter(p => p.id !== projectId));
+      setFilteredProjects(prev => prev.filter(p => p.id !== projectId));
+    } catch (error) {
+      console.error("Error removing favorite:", error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        <h1 className="text-4xl font-light text-[#152080] mb-12">
+          Mis Favoritos
+        </h1>
+
+        {/* Barra de búsqueda */}
+        <div className="flex gap-4 mb-8">
+          <div className="relative flex-1 max-w-md">
+            <Input
+              type="text"
+              placeholder="Buscar en favoritos..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-white"
+            />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          </div>
+        </div>
+
+        {/* Grid de proyectos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {isLoading ? (
+            [...Array(4)].map((_, index) => (
+              <SkeletonCard key={index} />
+            ))
+          ) : filteredProjects.length > 0 ? (
+            filteredProjects.map((project) => (
+              <div key={project.id} className="bg-white rounded-xl overflow-hidden transition-shadow duration-300 hover:shadow-lg">
+                <div className="relative">
+                  <img
+                    src={project.images?.[0] || '/api/placeholder/300/200'}
+                    alt={project.projectObj}
+                    className="w-full h-48 object-cover"
+                  />
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveFavorite(project.savedId, project.id);
+                    }}
+                    className="absolute top-4 right-4 p-2 bg-white/90 rounded-full hover:bg-white transition-colors"
+                  >
+                    <Heart 
+                      size={20} 
+                      className="text-[#152080] transition-colors"
+                      fill="#152080"
+                    />
+                  </button>
+                </div>
+                <div 
+                  className="p-5 cursor-pointer"
+                  onClick={() => router.push(`projects/${project.id}`)}
+                >
+                  <div className="mb-2">
+                    <h3 className="font-semibold text-lg text-gray-800 hover:text-[#152080] transition-[400ms]">
+                      {project.projectObj}
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center gap-1 mb-1">
+                    <span className="text-gray-700">4.5</span>
+                    <div className="flex">
+                      {[1, 2, 3, 4].map((star) => (
+                        <Star 
+                          key={star} 
+                          size={16} 
+                          className="fill-yellow-400 text-yellow-400" 
+                        />
+                      ))}
+                      <StarHalf 
+                        size={16} 
+                        className="text-yellow-400" 
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[#152080] font-medium">
+                    {project.contributors || 'Anónimo'}
+                  </p>
+
+                  <div className="mt-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Progreso</span>
+                      <span>{Math.round((project.moneyReached / project.moneyGoal) * 100)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                      <div 
+                        className="bg-[#152080] h-full rounded-full"
+                        style={{ 
+                          width: `${Math.min((project.moneyReached / project.moneyGoal) * 100, 100)}%` 
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-2 text-sm">
+                      <span className="font-medium text-gray-700">
+                        {formatCurrency(project.moneyReached)}
+                      </span>
+                      <span className="text-gray-500">
+                        Meta: {formatCurrency(project.moneyGoal)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-gray-500 text-lg">No se encontraron proyectos favoritos</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

@@ -80,6 +80,7 @@ const AuthenticatedNavbar = () => {
     <ul className="flex items-center gap-8">
       <li><a href="/projects" className="text-[#152080] hover:text-gray-900">Proyectos</a></li>
       <li><a href="/favorites" className="text-[#152080] hover:text-gray-900">Favoritos</a></li>
+      <li><a href="/mentors" className="text-[#152080] hover:text-gray-900">Mentores</a></li>
       <li>
         <a href="/projects/create" className="text-red-600 hover:text-red-700 px-6 py-2 rounded-full border-2 border-red-600">
           Empezar proyecto
@@ -214,7 +215,7 @@ const AuthenticatedNavbar = () => {
           `}
         >
           <div className="py-1">
-            <a href="#" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+            <a href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
               <User size={16} />
               Perfil
             </a>

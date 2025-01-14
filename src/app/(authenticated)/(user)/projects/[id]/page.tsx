@@ -59,6 +59,7 @@ async function getProjectData(projectId:any) {
 
 export default async function Page({ params } : any) {
   const {isAuthenticated, user}:any = await getSession();
+  // console.log(user.userId, " XDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
   const id = await params.id;
   const projectData:any = await getProjectData(await params.id);
   
@@ -107,7 +108,7 @@ export default async function Page({ params } : any) {
               {projectData.projectObj}
             </h1>
             {isAuthenticated && (
-              <FavoriteButton projectId={id} userId={user.userId} />
+              <FavoriteButton projectId={id} userId={user.user_id} />
             )}
           </div>
 

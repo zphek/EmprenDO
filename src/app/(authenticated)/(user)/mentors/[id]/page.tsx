@@ -1,10 +1,23 @@
 'use client'
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { db } from '@/firebase';
+import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface PageProps {
   params: {
@@ -12,57 +25,223 @@ interface PageProps {
   }
 }
 
+interface Resource {
+  id: string;
+  title: string;
+  type: string;
+  description: string;
+  fileUrl?: string;
+}
+
+interface Review {
+  id: string;
+  name: string;
+  rating: number;
+  date: string;
+  text: string;
+  verified?: boolean;
+}
+
+interface MentorProfile {
+  mentorFullname: string;
+  specialty: string;
+  mentorDescription: string;
+  image_url: string;
+  rating?: number;
+  skills?: string[];
+}
+
+interface SubscriptionData {
+  mentorId: string;
+  userId: string;
+  hourlyRate: number;
+  description: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: any;
+}
+
+
 export default function Page({ params }: PageProps) {
-  const reviews = [
-    {
-      name: "Samantha D.",
-      rating: 4.5,
-      date: "August 15, 2023",
-      text: "La mentora fue muy útil para mí, me ayudó con temas importantes, respondió mis preguntas y me dio buenos consejos. ¡Estoy muy contenta!"
-    },
-    {
-      name: "Alex M.",
-      rating: 4,
-      verified: true,
-      date: "August 15, 2023",
-      text: "Muy profesional y constructiva. Me ayudó a tener una visión clara de mi proyecto. ¡Muy recomendable!"
-    },
-    {
-      name: "Ethan R.",
-      rating: 5,
-      verified: true,
-      date: "August 16, 2023",
-      text: "¡Excelente mentor! Ideal para cualquiera que aprecie la buena orientación. Los consejos y el plan perfecto se ajustó a mis necesidades."
-    }
-  ];
+  const [mentor, setMentor] = useState<MentorProfile | null>(null);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [averageRating, setAverageRating] = useState(0);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState({
+    hourlyRate: '',
+    description: ''
+  });
 
-  const resources = [
-    {
-      title: "Gestión de proyectos",
-      type: "PDF",
-      description: "Este libro ofrece un software integral contra la gestión de proyectos, continuamente consistente con las mejores prácticas de la industria. La presentación clara y fácil la hacen accesible a todos, proporcionando herramientas específicas para liderar y ejecutar que buscan optimizar sus proyectos y alcanzar resultados efectivos."
-    },
-    {
-      title: "Dirección y gestión de proyectos de TI",
-      type: "PDF",
-      description: "Una guía completa para gestionar proyectos con un enfoque estratégico. Explora técnicas de liderazgo, gestión de riesgos y control de calidad, ayudando a los profesionales a tomar decisiones informadas y mejorar el desempeño de sus proyectos en entornos competitivos."
-    },
-    {
-      title: "Plantilla Acta de Constitución",
-      type: "PDF",
-      description: "Documento esencial para formalizar el inicio de un proyecto. Mediante su propuesta estructurada, esta plantilla permite establecer los objetivos, alcance y expectativas del proyecto. Una base sólida para la gestión del proyecto proporcionando claridad y estructura desde el principio."
-    }
-  ];
+  const handleSubscriptionSubmit = async () => {
+    try {
+      // Aquí deberías obtener el userId del usuario autenticado
+      const userId = 'current-user-id'; // Reemplazar con la lógica real de autenticación
+      
+      const subscriptionObj: SubscriptionData = {
+        mentorId: params.id,
+        userId,
+        hourlyRate: Number(subscriptionData.hourlyRate),
+        description: subscriptionData.description,
+        status: 'PENDING',
+        createdAt: serverTimestamp()
+      };
 
-  return (
+      await addDoc(collection(db, 'subscriptions'), subscriptionObj);
+      
+      setIsDialogOpen(false);
+      alert('Solicitud enviada exitosamente');
+    } catch (error) {
+      console.error('Error al enviar la solicitud:', error);
+      alert('Error al procesar la solicitud');
+    }
+  };
+
+  const renderReviews = () => {
+    if (reviews.length === 0) {
+      return (
+        <Card className="p-6 text-center">
+          <p className="text-gray-500">No hay reseñas disponibles para este mentor.</p>
+          <p className="text-sm mt-2">¡Sé el primero en dejar una reseña!</p>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {reviews.map((review) => (
+          <Card key={review.id} className="p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">{review.name}</span>
+                  {review.verified && (
+                    <Badge variant="secondary" className="text-xs">Verificado</Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      size={14}
+                      className={i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}
+                    />
+                  ))}
+                </div>
+              </div>
+              <span className="text-sm text-gray-500">
+                {new Date(review.date).toLocaleDateString()}
+              </span>
+            </div>
+            <p className="mt-2 text-gray-700">{review.text}</p>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+
+  useEffect(() => {
+    const loadMentorData = async () => {
+      try {
+        // Cargar datos del mentor
+        const mentorDoc = await getDoc(doc(db, 'mentorUser', params.id));
+        if (mentorDoc.exists()) {
+          setMentor(mentorDoc.data() as MentorProfile);
+        }
+
+        // Cargar recursos
+        const resourcesQuery = query(
+          collection(db, 'resources'),
+          where('mentorId', '==', params.id)
+        );
+        const resourcesSnapshot = await getDocs(resourcesQuery);
+        const resourcesData = resourcesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Resource[];
+        setResources(resourcesData);
+
+        // Cargar reseñas
+        const reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('mentorId', '==', params.id)
+        );
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        const reviewsData = reviewsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Review[];
+        setReviews(reviewsData);
+
+        // Calcular rating promedio
+        if (reviewsData.length > 0) {
+          const avgRating = reviewsData.reduce((acc, review) => acc + review.rating, 0) / reviewsData.length;
+          setAverageRating(Number(avgRating.toFixed(2)));
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading mentor data:', error);
+        setLoading(false);
+      }
+    };
+
+    loadMentorData();
+  }, [params.id]);
+
+  const handleDownload = async (resource: Resource) => {
+    if (!resource.fileUrl) {
+      alert('No hay archivo disponible para descargar');
+      return;
+    }
+    window.open(resource.fileUrl, '_blank');
+  };
+
+  const handleSubscribe = async () => {
+    try {
+      // Aquí puedes implementar la lógica de suscripción
+      alert('Funcionalidad de suscripción en desarrollo');
+    } catch (error) {
+      console.error('Error en suscripción:', error);
+      alert('Error al procesar la suscripción');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Cargando...</div>
+      </div>
+    );
+  }
+
+  if (!mentor) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Mentor no encontrado</div>
+      </div>
+    );
+  }
+
+  return (<>
     <div className="max-w-4xl mx-auto p-6">
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="col-span-2">
-          <img src="/api/placeholder/600/400" alt="Mentor profile" className="rounded-lg w-full object-cover" />
+          <img 
+            src={mentor.image_url || "/api/placeholder/600/400"} 
+            alt={`Foto de ${mentor.mentorFullname}`} 
+            className="rounded-lg w-full h-[400px] object-cover"
+          />
         </div>
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <img key={i} src="/api/placeholder/200/133" alt={`Additional photo ${i}`} className="rounded-lg w-full object-cover" />
+            <img 
+              key={i} 
+              src={mentor.image_url || "/api/placeholder/200/133"} 
+              alt={`Foto adicional ${i}`} 
+              className="rounded-lg w-full h-[133px] object-cover" 
+            />
           ))}
         </div>
       </div>
@@ -70,32 +249,35 @@ export default function Page({ params }: PageProps) {
       <div className="mb-8">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-2xl font-bold">Aida Gonzalez</h1>
-            <p className="text-gray-600">Administración de Empresas</p>
+            <h1 className="text-2xl font-bold">{mentor.mentorFullname}</h1>
+            <p className="text-gray-600">{mentor.specialty}</p>
             <div className="flex items-center gap-1 mt-1">
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
                   size={16}
-                  className={i < 4 ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}
+                  className={i < Math.floor(averageRating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}
                 />
               ))}
-              <span className="ml-1">4.95</span>
+              <span className="ml-1">{averageRating}</span>
             </div>
           </div>
-          <Button className="bg-red-600 hover:bg-red-700">
+          <Button 
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => setIsDialogOpen(true)}
+          >
             Inscribirse
           </Button>
         </div>
 
         <p className="text-gray-700 mb-4">
-          Soy administradora de empresas con experiencia en gestión de proyectos. Mi metodología se basa en una planificación estratégica clara, seguimiento constante y toma de decisiones informada.
+          {mentor.mentorDescription}
         </p>
 
         <div className="flex gap-2 mb-4">
-          <Badge variant="secondary">Honestidad</Badge>
-          <Badge variant="secondary">Perseverancia</Badge>
-          <Badge variant="secondary">Responsabilidad</Badge>
+          {mentor.skills?.map((skill, index) => (
+            <Badge key={index} variant="secondary">{skill}</Badge>
+          ))}
         </div>
       </div>
 
@@ -105,40 +287,14 @@ export default function Page({ params }: PageProps) {
           <Button variant="outline">Escribir una reseña</Button>
         </div>
         
-        <div className="space-y-4">
-          {reviews.map((review, index) => (
-            <Card key={index} className="p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{review.name}</span>
-                    {review.verified && (
-                      <Badge variant="secondary" className="text-xs">Verificado</Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        size={14}
-                        className={i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <span className="text-sm text-gray-500">{review.date}</span>
-              </div>
-              <p className="mt-2 text-gray-700">{review.text}</p>
-            </Card>
-          ))}
-        </div>
+        {renderReviews()}
       </div>
 
       <div>
         <h2 className="text-xl font-bold mb-4">Certificaciones y Recursos</h2>
         <div className="space-y-4">
-          {resources.map((resource, index) => (
-            <Card key={index} className="p-4">
+          {resources.map((resource) => (
+            <Card key={resource.id} className="p-4">
               <div className="flex gap-4">
                 <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
                   <span className="text-sm font-semibold">{resource.type}</span>
@@ -146,7 +302,12 @@ export default function Page({ params }: PageProps) {
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
                     <h3 className="font-semibold">{resource.title}</h3>
-                    <Button variant="ghost" size="icon">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleDownload(resource)}
+                      disabled={!resource.fileUrl}
+                    >
                       <Download size={20} />
                     </Button>
                   </div>
@@ -158,5 +319,56 @@ export default function Page({ params }: PageProps) {
         </div>
       </div>
     </div>
+    <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Solicitar mentoría</AlertDialogTitle>
+            <AlertDialogDescription>
+              Complete los siguientes datos para enviar su solicitud de mentoría.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="hourlyRate" className="text-sm font-medium">
+                Pago por hora (USD)
+              </label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                placeholder="Ej: 50"
+                value={subscriptionData.hourlyRate}
+                onChange={(e) => setSubscriptionData(prev => ({
+                  ...prev,
+                  hourlyRate: e.target.value
+                }))}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label htmlFor="description" className="text-sm font-medium">
+                Descripción de la mentoría
+              </label>
+              <Textarea
+                id="description"
+                placeholder="Describe el objetivo de la mentoría y tus expectativas..."
+                value={subscriptionData.description}
+                onChange={(e) => setSubscriptionData(prev => ({
+                  ...prev,
+                  description: e.target.value
+                }))}
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button onClick={handleSubscriptionSubmit}>
+              Enviar solicitud
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+  </>
   );
 }

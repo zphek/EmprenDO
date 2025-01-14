@@ -81,6 +81,7 @@ export const config = {
     '/login',
     '/register',
     '/retrieve',
+    '/profile',
     '/'
   ]
 }

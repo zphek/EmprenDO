@@ -9,7 +9,9 @@ export default async function getSession() {
         const token:any = (await cookies()).get("AccessToken")?.value;
 
         if(token != null){
-            const user = authAdmin.verifyIdToken(token);
+            const user = await authAdmin.verifyIdToken(token);
+
+            console.log(user);
             return {
                 isAuthenticated: true,
                 user
