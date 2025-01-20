@@ -156,7 +156,7 @@ export default async function Page() {
   
           {/* Ver todos link */}
           <div className="flex justify-end items-center mt-6 sm:mt-8">
-            <a href="#" className="text-sm sm:text-base text-red-600 hover:text-red-700 inline-flex items-center gap-2">
+            <a href="/projects" className="text-sm sm:text-base text-red-600 hover:text-red-700 inline-flex items-center gap-2">
               Ver todos los emprendimientos
               <span className="text-lg sm:text-xl">→</span>
             </a>

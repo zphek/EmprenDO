@@ -53,6 +53,7 @@ export default function Page() {
     email: string;
     cedula: string;
     createdAt: Date;
+    role: string;
   }) => {
     try {
       await setDoc(doc(db, 'users', userId), {
@@ -94,7 +95,8 @@ export default function Page() {
         name: formData.name,
         email: formData.email,
         cedula: formData.cedula,
-        createdAt: new Date()
+        createdAt: new Date(),
+        role: 'normal'
       });
 
       toast.success('¡Registro exitoso!');
@@ -120,21 +122,14 @@ export default function Page() {
         toast.error('No se pudo obtener el correo electrónico');
         return;
       }
-
-      // Verificar si el email ya existe
-      const methods = await fetchSignInMethodsForEmail(auth, user.email);
-      if (methods.length > 0) {
-        await auth.signOut();
-        toast.error('Este correo ya está registrado');
-        return;
-      }
-
+      
       // Guardar datos adicionales del usuario de Google
       await saveUserData(user.uid, {
         name: user.displayName || 'Usuario de Google',
         email: user.email,
         cedula: '', // Podrías solicitar la cédula después del registro con Google
-        createdAt: new Date()
+        createdAt: new Date(),
+        role: "normal"
       });
 
       toast.success('¡Registro con Google exitoso!');

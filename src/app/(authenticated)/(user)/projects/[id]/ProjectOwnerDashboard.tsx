@@ -150,9 +150,10 @@ async function loadProjectData() {
     </Alert>;
   }
 
-  const totalInvested = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+  const totalInvested = project.moneyReached;
+//   const totalInvested = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
   const progressPercentage = Math.min((totalInvested / project.moneyGoal) * 100, 100);
-  const remainingAmount = Math.max(project.moneyGoal - totalInvested, 0);
+  const remainingAmount = Math.max(project.moneyGoal - project.moneyReached, 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">

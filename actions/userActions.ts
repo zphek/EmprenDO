@@ -2,7 +2,7 @@
 
 import { db } from "@/firebase";
 import { authAdmin } from "@/firebaseAdmin";
-import { setDoc, doc } from "firebase/firestore";
+import { setDoc, doc, getDoc } from "firebase/firestore";
 import { cookies } from "next/headers";
 
 type userInfo = {
@@ -34,21 +34,71 @@ export async function userRegister(data: userInfo){
         }   
 }
 
-export async function isUserFullRegistered(){
+export async function isUserFullRegistered(token: string) {
     try {
-        const token:any = (await cookies()).get("AccessToken")?.value;
-
-        if(token != null){
-            const user = authAdmin.verifyIdToken(token);
-            
+        // console.log(token)
+        if (!token) {
+            return null;
         }
+
+        // Verify the token and get user info
+        const decodedToken = await authAdmin.verifyIdToken(token);
+        // console.log(decodedToken);
+        const uid = decodedToken.uid;
+
+        // Check if user exists in Firestore
+        const userDocRef = await doc(db, 'users', uid);
+        const userDoc = await getDoc(userDocRef);
+
+
+        if (!userDoc.exists) {
+            return false;
+        }
+
+        // Get user data
+        const userData = userDoc.data();
+
+        // Check if user has all required fields based on your Firestore structure
+        const isComplete = Boolean(
+            userData &&
+            userData.cedula &&
+            userData.email &&
+            userData.name &&
+            userData.createdAt &&
+            userData.updatedAt
+        );
+
+        return isComplete;
+
     } catch (error) {
+        console.error('Error checking user registration:', error);
         return null;
     }
 }
 
-export async function userLogOut(){
-    (await cookies()).delete("AccessToken");
+
+export async function userLogOut() {
+    try {
+        const token = (await cookies()).get("AccessToken")?.value;
+        
+        if (!token) {
+            return { success: false, error: 'No token found' };
+        }
+
+        // Decodificar el token para obtener el uid
+        const decodedToken = await authAdmin.verifyIdToken(token);
+        
+        // Revocar todos los tokens del usuario
+        await authAdmin.revokeRefreshTokens(decodedToken.uid);
+        
+        // Eliminar la cookie
+        (await cookies()).delete("AccessToken");
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error logging out:', error);
+        return { success: false, error: 'Error during logout' };
+    }
 }
 
 export async function listAllUsers(nextPageToken?: string): Promise<UserData[]> {
@@ -141,4 +191,17 @@ type NewUserData = {
       };
     }
   }
-  
+
+  export async function getUserRole(token: string) {
+    try {
+        if (!token) return null;
+
+        const decodedToken = await authAdmin.verifyIdToken(token);
+        const userDoc = await getDoc(doc(db, 'users', decodedToken.uid));
+        
+        return userDoc.exists() ? (userDoc.data().role ?? "normal") : "normal";
+    } catch (error) {
+        console.error('Error getting user role:', error);
+        return "normal";
+    }
+ }

@@ -30,6 +30,10 @@ export async function middleware(request: NextRequest) {
       const data = await verificationResponse.json();
       console.log(data);
 
+      if(data.isFullRegistered == false && pathname != '/complete-registration'){
+        return NextResponse.redirect(new URL('/complete-registration', request.url));
+      }
+
       if (data.isAuthenticated == false) {
         // Si el token no es válido, creamos una respuesta que elimine la cookie
         const response = NextResponse.redirect(new URL('/login', request.url));
@@ -83,6 +87,7 @@ export const config = {
     '/retrieve',
     '/profile',
     '/settings',
+    '/complete-registration',
     '/'
   ]
 }

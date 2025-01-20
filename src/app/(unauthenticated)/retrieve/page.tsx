@@ -1,14 +1,67 @@
 'use client'
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/firebase';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function Page() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess(true);
+      setEmail(''); // Clear form
+    } catch (error: any) {
+      switch (error.code) {
+        case 'auth/user-not-found':
+          setError('No existe una cuenta con este correo electrónico.');
+          break;
+        case 'auth/invalid-email':
+          setError('El correo electrónico no es válido.');
+          break;
+        case 'auth/too-many-requests':
+          setError('Demasiados intentos. Por favor, intente más tarde.');
+          break;
+        default:
+          setError('Ha ocurrido un error. Por favor, intente nuevamente.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-white flex">
+    <motion.main 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }}
+      className="min-h-screen bg-white flex"
+    >
       {/* Left Column - Form */}
       <div className="w-1/2 p-12 flex flex-col">
-        <div className="mb-8">
-          <button className="p-2 rounded-full hover:bg-gray-100">
+        <motion.div 
+          initial={{ x: -20 }}
+          animate={{ x: 0 }}
+          className="mb-8"
+        >
+          <button 
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            disabled={isLoading}
+          >
             <svg 
               className="w-6 h-6" 
               fill="none" 
@@ -23,35 +76,88 @@ export default function Page() {
               />
             </svg>
           </button>
-        </div>
+        </motion.div>
 
         <div className="max-w-md w-full mx-auto mt-12">
-          <h1 className="text-4xl font-semibold text-gray-800 mb-12">
-            Recuperar Cuenta
-          </h1>
+          <motion.div
+            initial={{ y: -20 }}
+            animate={{ y: 0 }}
+          >
+            <h1 className="text-4xl font-semibold text-gray-800 mb-4">
+              Recuperar Cuenta
+            </h1>
+            <p className="text-gray-600 mb-8">
+              Ingresa tu correo electrónico y te enviaremos instrucciones para restablecer tu contraseña.
+            </p>
+          </motion.div>
 
-          <form className="space-y-6">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4"
+            >
+              <Alert variant="destructive">
+                <AlertDescription>
+                  {error}
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4"
+            >
+              <Alert className="border-green-500 text-green-700 bg-green-50">
+                <AlertDescription>
+                  Hemos enviado las instrucciones a tu correo electrónico.
+                </AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+
+          <motion.form 
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
             <div>
               <input
                 type="email"
                 placeholder="Correo electrónico"
                 className="w-full p-4 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-red-600 text-white py-4 px-6 rounded-lg hover:bg-red-700 transition-colors"
+              disabled={isLoading}
+              className={`w-full bg-red-600 text-white py-4 px-6 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center
+                ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              Enviar Formulario
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : 'Enviar Formulario'}
             </button>
-          </form>
+          </motion.form>
         </div>
       </div>
 
       {/* Right Column - Image */}
-      <div className="w-1/2 relative flex items-end">
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="w-1/2 relative flex items-end"
+      >
         <div className="absolute top-4 right-4">
           <div className="text-blue-600">
             <svg 
@@ -81,7 +187,7 @@ export default function Page() {
             </svg>
           </div>
         </div>
-      </div>
-    </main>
+      </motion.div>
+    </motion.main>
   );
 }

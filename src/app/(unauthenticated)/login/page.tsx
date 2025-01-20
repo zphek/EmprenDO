@@ -11,13 +11,16 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithEmailAndPassword, 
-  fetchSignInMethodsForEmail
+  fetchSignInMethodsForEmail,
+  browserLocalPersistence,
+  setPersistence
 } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { authAdmin } from "@/firebaseAdmin"
 import { Toaster, toast } from 'react-hot-toast';
 import { createCookie } from '../../../../actions/createCookie';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 const LoginInterface = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -27,6 +30,9 @@ const LoginInterface = () => {
 
   const handleEmailLogin = async (e:any) => {
     e.preventDefault();
+
+    await setPersistence(auth, browserLocalPersistence);
+
     
     toast.promise(
       (async () => {
@@ -54,6 +60,8 @@ const LoginInterface = () => {
   };
 
   const handleGoogleLogin = async () => {
+    await setPersistence(auth, browserLocalPersistence);
+
     try {
       // Primero intentamos obtener el email del usuario que intenta registrarse
       const provider = new GoogleAuthProvider();
@@ -62,21 +70,28 @@ const LoginInterface = () => {
 
       console.log(result);
 
+      
       if (!userEmail) {
         await auth.signOut();
         toast.error('No se pudo obtener el correo electrónico');
         return;
       }
-
-      // Verificamos si el email ya existe
-      const methods = await fetchSignInMethodsForEmail(auth, userEmail);
       
-      // Si ya existe el correo, no permitimos el registro
-      if (methods.length == 0) {
-        await auth.signOut();
-        toast.error('Esta cuenta no existe.');
-        return;
-      }
+      await createCookie(await result?.user.getIdToken());
+      
+      setTimeout(()=>{
+        router.push("/landing");
+      }, 2000);
+
+      // // Verificamos si el email ya existe
+      // const methods = await fetchSignInMethodsForEmail(auth, userEmail);
+      
+      // // Si ya existe el correo, no permitimos el registro
+      // if (methods.length == 0) {
+      //   await auth.signOut();
+      //   toast.error('Esta cuenta no existe.');
+      //   return;
+      // }
 
       // Si llegamos aquí, es un nuevo registro válido
       toast.success('Haz iniciado sesión!');
@@ -153,9 +168,9 @@ const LoginInterface = () => {
                     Recuérdame
                   </label>
                 </div>
-                <Button variant="link" className="text-blue-600 p-0">
-                  Contraseña olvidada
-                </Button>
+                <Link href="/retrieve" className="text-blue-600 p-0">
+                  ¿Has olvidado tu contrase&ntilde;a?
+                </Link>
               </div>
 
               <Button type="submit" className="w-full py-6 bg-[#CD1029] hover:bg-red-700">

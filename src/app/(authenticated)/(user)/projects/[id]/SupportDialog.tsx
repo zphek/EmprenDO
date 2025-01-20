@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { CreditCard, Wallet, X } from "lucide-react";
 import { auth, db } from "@/firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp, runTransaction } from "firebase/firestore";
 
 const paymentMethods = [
   {
@@ -66,14 +66,33 @@ const SupportDialog = () => {
     setError('');
     setIsSubmitting(true);
     try {
-      const investmentRef = collection(db, 'investments');
-      await addDoc(investmentRef, {
-        projectId,
-        userId: user?.uid,
-        amount: amountNum,
-        paymentMethodId: selectedMethod,
-        status: 'completed',
-        createdAt: serverTimestamp(),
+      await runTransaction(db, async (transaction) => {
+        // 1. Primero realizamos todas las lecturas
+        const projectRef = doc(db, "projects", projectId);
+        const projectDoc = await transaction.get(projectRef);
+        
+        if (!projectDoc.exists()) {
+          throw new Error("El proyecto no existe!");
+        }
+
+        // Guardamos los datos necesarios de la lectura
+        const currentMoneyReached = projectDoc.data().moneyReached || 0;
+        
+        // 2. Luego realizamos todas las escrituras
+        const investmentRef = doc(collection(db, 'investments'));
+        transaction.set(investmentRef, {
+          projectId,
+          userId: user?.uid,
+          amount: amountNum,
+          paymentMethodId: selectedMethod,
+          status: 'completed',
+          createdAt: serverTimestamp(),
+        });
+
+        // Actualizamos el moneyReached del proyecto
+        transaction.update(projectRef, {
+          moneyReached: currentMoneyReached + amountNum
+        });
       });
 
       setIsOpen(false);
