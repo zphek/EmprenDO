@@ -205,3 +205,41 @@ type NewUserData = {
         return "normal";
     }
  }
+
+ export async function getDbUser() {
+    try {
+        const token = (await cookies()).get("AccessToken")?.value;
+
+        if (!token) {
+            return { success: false, error: 'No token found' };
+        }
+
+        // Verificar el token y obtener información del usuario
+        const decodedToken = await authAdmin.verifyIdToken(token);
+        const uid = decodedToken.uid;
+
+        // Obtener datos del usuario desde Firestore
+        const userDocRef = doc(db, 'users', uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+            return { success: false, error: 'User not found in database' };
+        }
+
+        // Retornar los datos del usuario
+        return {
+            success: true,
+            data: {
+                uid: uid,
+                ...userDoc.data()
+            }
+        };
+
+    } catch (error) {
+        console.error('Error getting user data:', error);
+        return { 
+            success: false, 
+            error: 'Error retrieving user data' 
+        };
+    }
+}

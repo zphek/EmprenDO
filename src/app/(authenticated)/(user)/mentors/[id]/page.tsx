@@ -21,9 +21,9 @@ import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp
 import getSession from '../../../../../../actions/verifySession';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 interface Resource {
@@ -63,12 +63,15 @@ interface SubscriptionData {
 
 
 export default function Page({ params }: PageProps) {
+  const resolvedParams = React.use(params);
+  const mentorId = resolvedParams.id;
   const [mentor, setMentor] = useState<MentorProfile | null>(null);
   const [resources, setResources] = useState<Resource[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [averageRating, setAverageRating] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscriptionData, setSubscriptionData] = useState({
     hourlyRate: '',
     description: ''
@@ -80,7 +83,7 @@ export default function Page({ params }: PageProps) {
       const session:any = await getSession(); // Reemplazar con la lógica real de autenticación
       
       const subscriptionObj: SubscriptionData = {
-        mentorId: params.id,
+        mentorId: mentorId,
         userId: session.user?.uid || '',
         hourlyRate: Number(subscriptionData.hourlyRate),
         description: subscriptionData.description,
@@ -145,6 +148,23 @@ export default function Page({ params }: PageProps) {
   useEffect(() => {
     const loadMentorData = async () => {
       try {
+
+        // Obtener la sesión del usuario actual
+        const session: any = await getSession();
+        const userId = session?.user?.uid;
+
+        // Verificar si existe una suscripción activa
+        if (userId) {
+          const subscriptionsQuery = query(
+            collection(db, 'subscriptions'),
+            where('mentorId', '==', params.id),
+            where('userId', '==', userId)
+          );
+          const subscriptionsSnapshot = await getDocs(subscriptionsQuery);
+          const hasSubscription = !subscriptionsSnapshot.empty;
+          setIsSubscribed(hasSubscription);
+        }
+
         // Cargar datos del mentor
         const mentorDoc = await getDoc(doc(db, 'mentorUser', params.id));
         if (mentorDoc.exists()) {
@@ -189,7 +209,7 @@ export default function Page({ params }: PageProps) {
     };
 
     loadMentorData();
-  }, [params.id]);
+  }, [mentorId]);
 
   const handleDownload = async (resource: Resource) => {
     if (!resource.fileUrl) {
@@ -264,11 +284,12 @@ export default function Page({ params }: PageProps) {
             </div>
           </div>
           <Button 
-            className="bg-red-600 hover:bg-red-700"
-            onClick={() => setIsDialogOpen(true)}
+            className={isSubscribed ? "bg-gray-600" : "bg-red-600 hover:bg-red-700"}
+            onClick={() => !isSubscribed && setIsDialogOpen(true)}
+            disabled={isSubscribed}
           >
-            Inscribirse
-          </Button>
+            {isSubscribed ? 'Ya inscrito' : 'Inscribirse'}
+        </Button>
         </div>
 
         <p className="text-gray-700 mb-4">
