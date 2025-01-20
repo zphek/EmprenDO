@@ -186,7 +186,7 @@ const UserManagementUI = () => {
     );
   }
   return (
-    <div className="p-8 w-full min-h-screen">
+    <div className="p-8 w-full max-h-screen overflow-y-scroll">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-blue-900 mb-6">Gestionar usuarios</h1>
         
@@ -232,7 +232,7 @@ const UserManagementUI = () => {
 
       {/* Lista de usuarios */}
       <div className="space-y-4 max-h-screen overflow-y-scroll">
-        {filteredUsers.map((user) => (
+        {filteredUsers.map((user:any) => (
           <div key={user.uid} className="bg-white border rounded-lg shadow-sm">
             <div className="p-6">
               <div className="flex justify-between items-start">

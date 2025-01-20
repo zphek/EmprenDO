@@ -13,8 +13,12 @@ import {
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { userLogOut } from '../../actions/userActions';
+import { auth } from '@/firebase';
+import { useRouter } from 'next/navigation';
 
 const AdminSidebar = ({ userName = "Priscilla Castro", userRole = "Administrador Emprendur" }) => {
+  const router = useRouter();
   const menuItems = [
     { 
       icon: <BarChart2 className="w-5 h-5" />, 
@@ -51,13 +55,11 @@ const AdminSidebar = ({ userName = "Priscilla Castro", userRole = "Administrador
   const path = usePathname();
 
   const handleLogout = async () => {
-    try {
-      // Aquí iría tu lógica de cierre de sesión
-      console.log('Iniciando cierre de sesión...');
-      // await signOut(); // Función de autenticación
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-    }
+    await auth.signOut();
+    setTimeout(async () => {
+      await userLogOut();
+      router.push("/login")
+    }, 100)       
   };
 
   return (

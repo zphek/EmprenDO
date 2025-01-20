@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, Plus, Pencil, Trash2 } from 'lucide-react';
-import { db, storage } from '@/firebase';
+import { db, storage, auth } from '@/firebase';
 import { 
   collection, 
   addDoc,
@@ -12,7 +12,8 @@ import {
   query,
   orderBy,
   updateDoc,
-  where 
+  where,
+  setDoc 
 } from 'firebase/firestore';
 import { 
   ref, 
@@ -20,6 +21,12 @@ import {
   getDownloadURL,
   deleteObject 
 } from 'firebase/storage';
+import {
+  createUserWithEmailAndPassword,
+  deleteUser,
+  updateEmail,
+  sendPasswordResetEmail
+} from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 
 const MentorManagement = () => {
@@ -32,7 +39,7 @@ const MentorManagement = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [editingMentor, setEditingMentor] = useState<any>(null);
 
-  const [newMentor, setNewMentor] = useState<any>({
+  const [newMentor, setNewMentor] = useState({
     mentorFullname: '',
     email: '',
     password: '',
@@ -40,7 +47,7 @@ const MentorManagement = () => {
     categoryId: '',
     status: 'Activo',
     image_url: '',
-    passwordHash: ''
+    cedula: ''
   });
 
   useEffect(() => {
@@ -65,7 +72,7 @@ const MentorManagement = () => {
     }
   };
 
-  const handleFileChange = (e:any) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.type.startsWith('image/')) {
@@ -77,8 +84,12 @@ const MentorManagement = () => {
   };
 
   const validateForm = () => {
-    if (!newMentor.mentorFullname || !newMentor.email || (!editingMentor && !newMentor.password)) {
+    if (!newMentor.mentorFullname || !newMentor.email || (!editingMentor && !newMentor.password) || !newMentor.cedula) {
       toast.error('Por favor complete todos los campos requeridos');
+      return false;
+    }
+    if (!editingMentor && newMentor.password.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
       return false;
     }
     return true;
@@ -91,6 +102,7 @@ const MentorManagement = () => {
     setIsLoading(true);
     try {
       let image_url = editingMentor?.image_url || '';
+      let uid;
       
       // Manejar la imagen si se seleccionó una nueva
       if (selectedFile) {
@@ -98,7 +110,6 @@ const MentorManagement = () => {
         const uploadResult = await uploadBytes(imageRef, selectedFile);
         image_url = await getDownloadURL(uploadResult.ref);
 
-        // Si estamos editando y había una imagen anterior, la eliminamos
         if (editingMentor?.image_url) {
           try {
             const oldImageRef = ref(storage, editingMentor.image_url);
@@ -109,45 +120,75 @@ const MentorManagement = () => {
         }
       }
 
+      // Crear o actualizar usuario en Authentication y Firestore
+      if (!editingMentor) {
+        // Crear nuevo usuario en Authentication
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          newMentor.email,
+          newMentor.password
+        );
+        uid = userCredential.user.uid;
+
+        // Crear documento de usuario en Firestore
+        await setDoc(doc(db, 'users', uid), {
+          cedula: newMentor.cedula,
+          createdAt: new Date().toISOString(),
+          email: newMentor.email,
+          name: newMentor.mentorFullname,
+          role: "mentor",
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        uid = editingMentor.uid;
+        if (editingMentor.email !== newMentor.email) {
+          // Actualizar email en Authentication
+          await updateEmail(auth.currentUser, newMentor.email);
+          
+          // Actualizar datos de usuario en Firestore
+          await updateDoc(doc(db, 'users', uid), {
+            email: newMentor.email,
+            name: newMentor.mentorFullname,
+            cedula: newMentor.cedula,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
+
       // Crear objeto con datos del mentor
-      const mentorData:any = {
+      const mentorData = {
         mentorFullname: newMentor.mentorFullname,
         email: newMentor.email,
         mentorDescription: newMentor.mentorDescription,
         categoryId: newMentor.categoryId,
         status: newMentor.status,
         image_url,
+        cedula: newMentor.cedula,
         updatedAt: new Date().toISOString()
       };
 
       if (!editingMentor) {
-        // Si es un nuevo mentor, agregamos los campos adicionales
         mentorData.createdAt = new Date().toISOString();
-        mentorData.passwordHash = newMentor.password; // En producción deberías hashear la contraseña
-      }
-
-      if (editingMentor) {
-        // Actualizar mentor existente
-        const mentorRef = doc(db, 'mentorUser', editingMentor.mentorUserId);
-        await updateDoc(mentorRef, mentorData);
-        toast.success('Mentor actualizado exitosamente');
-      } else {
-        // Crear nuevo mentor
-        await addDoc(collection(db, 'mentorUser'), mentorData);
+        // Usar setDoc con el uid como ID del documento
+        await setDoc(doc(db, 'mentorUser', uid), mentorData);
         toast.success('Mentor registrado exitosamente');
+      } else {
+        // Ya no necesitamos mentorUserId, usamos el uid directamente
+        await updateDoc(doc(db, 'mentorUser', uid), mentorData);
+        toast.success('Mentor actualizado exitosamente');
       }
 
       await fetchMentors();
       resetForm();
-    } catch (error) {
+    } catch (error:any) {
       console.error('Error saving mentor:', error);
-      toast.error('Error al guardar el mentor');
+      toast.error(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = async (mentor:any) => {
+  const handleDelete = async (mentor) => {
     if (window.confirm('¿Está seguro de que desea eliminar este mentor?')) {
       try {
         // Eliminar imagen si existe
@@ -156,7 +197,19 @@ const MentorManagement = () => {
           await deleteObject(imageRef);
         }
         
-        // Eliminar documento
+        // Eliminar usuario de Authentication y Firestore
+        if (mentor.uid) {
+          // Eliminar documento de usuario
+          await deleteDoc(doc(db, 'users', mentor.uid));
+          
+          // Obtener el usuario actual de Auth
+          const user = auth.currentUser;
+          if (user) {
+            await deleteUser(user);
+          }
+        }
+        
+        // Eliminar documento de mentor
         await deleteDoc(doc(db, 'mentorUser', mentor.mentorUserId));
         toast.success('Mentor eliminado exitosamente');
         await fetchMentors();
@@ -167,16 +220,17 @@ const MentorManagement = () => {
     }
   };
 
-  const handleEdit = (mentor:any) => {
+  const handleEdit = (mentor) => {
     setEditingMentor(mentor);
     setNewMentor({
       mentorFullname: mentor.mentorFullname,
       email: mentor.email,
-      password: '', // No mostramos la contraseña actual
+      password: '',
       mentorDescription: mentor.mentorDescription || '',
       categoryId: mentor.categoryId || '',
       status: mentor.status || 'Activo',
-      image_url: mentor.image_url || ''
+      image_url: mentor.image_url || '',
+      cedula: mentor.cedula || ''
     });
     setIsModalOpen(true);
   };
@@ -189,20 +243,13 @@ const MentorManagement = () => {
       mentorDescription: '',
       categoryId: '',
       status: 'Activo',
-      image_url: ''
+      image_url: '',
+      cedula: ''
     });
     setSelectedFile(null);
     setEditingMentor(null);
     setIsModalOpen(false);
   };
-
-  // Filtrar mentores
-  const filteredMentors = mentors
-    .filter((mentor:any) => categoryFilter === 'all' || mentor.categoryId === categoryFilter)
-    .filter((mentor:any) => 
-      mentor.mentorFullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      mentor.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
   const categories = [
     { id: '1', name: 'Tecnología' },
@@ -211,6 +258,14 @@ const MentorManagement = () => {
     { id: '4', name: 'Diseño' },
     { id: '5', name: 'Ventas' }
   ];
+
+  // Filtrar mentores
+  const filteredMentors = mentors
+    .filter((mentor:any) => categoryFilter === 'all' || mentor.categoryId === categoryFilter)
+    .filter((mentor:any) => 
+      mentor.mentorFullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      mentor.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
   return (
     <div className="p-8 w-full">
@@ -261,7 +316,6 @@ const MentorManagement = () => {
       {/* Mentors list */}
       <div className="space-y-4">
         {isInitialLoading ? (
-          // Loading skeleton
           [...Array(3)].map((_, i) => (
             <div key={i} className="bg-white border rounded-lg shadow-sm p-6 animate-pulse">
               <div className="flex items-center gap-4">
@@ -301,6 +355,7 @@ const MentorManagement = () => {
                     <div>
                       <h3 className="font-semibold text-blue-900">{mentor.mentorFullname}</h3>
                       <p className="text-sm text-gray-600">{mentor.email}</p>
+                      <p className="text-sm text-gray-600">Cédula: {mentor.cedula}</p>
                       <div className="mt-1">
                         <span className={`text-sm ${
                           mentor.status === 'Activo' ? 'text-green-600' : 'text-red-600'
@@ -375,6 +430,19 @@ const MentorManagement = () => {
                   type="email"
                   value={newMentor.email}
                   onChange={(e) => setNewMentor({...newMentor, email: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Cédula
+                </label>
+                <input
+                  type="text"
+                  value={newMentor.cedula}
+                  onChange={(e) => setNewMentor({...newMentor, cedula: e.target.value})}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />

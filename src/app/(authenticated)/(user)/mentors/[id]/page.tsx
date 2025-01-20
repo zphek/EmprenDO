@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { db } from '@/firebase';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import getSession from '../../../../../../actions/verifySession';
 
 interface PageProps {
   params: {
@@ -76,11 +77,11 @@ export default function Page({ params }: PageProps) {
   const handleSubscriptionSubmit = async () => {
     try {
       // Aquí deberías obtener el userId del usuario autenticado
-      const userId = 'current-user-id'; // Reemplazar con la lógica real de autenticación
+      const session:any = await getSession(); // Reemplazar con la lógica real de autenticación
       
       const subscriptionObj: SubscriptionData = {
         mentorId: params.id,
-        userId,
+        userId: session.user?.uid || '',
         hourlyRate: Number(subscriptionData.hourlyRate),
         description: subscriptionData.description,
         status: 'PENDING',

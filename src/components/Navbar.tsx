@@ -109,6 +109,11 @@ const AuthenticatedNavbar = () => {
         </a>
       </li>
       <li>
+        <a href="/library" className="text-gray-600 hover:text-gray-900 font-medium transition-colors duration-200">
+          Recursos
+        </a>
+      </li>
+      <li>
         <a 
           href="/projects/create" 
           className="text-red-600 hover:text-white hover:bg-red-600 px-6 py-2 rounded-lg border-2 border-red-600 transition-all duration-200 font-medium"
@@ -315,15 +320,16 @@ const Navbar = ({ isAuthenticated = false }) => {
         <div className="px-4 py-3 space-y-4">
           {isAuthenticated ? (
             <div className="flex flex-col space-y-4">
-              <a href="/projects" className="text-gray-600 hover:text-gray-900 font-medium">Proyectos</a>
-              <a href="/favorites" className="text-gray-600 hover:text-gray-900 font-medium">Favoritos</a>
-              <a href="/mentors" className="text-gray-600 hover:text-gray-900 font-medium">Mentores</a>
-              <a 
+              <Link href="/projects" className="text-gray-600 hover:text-gray-900 font-medium">Proyectos</Link>
+              <Link href="/favorites" className="text-gray-600 hover:text-gray-900 font-medium">Favoritos</Link>
+              <Link href="/mentors" className="text-gray-600 hover:text-gray-900 font-medium">Mentores</Link>
+              <Link href="/library" className="text-gray-600 hover:text-gray-900 font-medium">Libreria</Link>
+              <Link 
                 href="/projects/create" 
                 className="text-red-600 hover:text-white hover:bg-red-600 px-4 py-2 rounded-lg border-2 border-red-600 transition-all duration-200 font-medium text-center"
               >
                 Empezar proyecto
-              </a>
+              </Link>
               <hr />
               <a href="/profile" className="text-gray-600 hover:text-gray-900 font-medium">Perfil</a>
               <a href="/settings" className="text-gray-600 hover:text-gray-900 font-medium">Configuración</a>
