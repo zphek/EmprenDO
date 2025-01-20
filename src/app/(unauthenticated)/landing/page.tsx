@@ -1,6 +1,7 @@
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import getSession from "../../../../actions/verifySession";
+import Link from "next/link";
 
 export default async function Page() {
     const isAuthenticated = await getSession();
@@ -89,12 +90,12 @@ export default async function Page() {
             ))}
           </div>
   
-          <div className="flex justify-end items-center gap-3 sm:gap-4">
-            <span className="text-sm sm:text-base text-blue-900 font-medium">Conoce las mentorías</span>
+          <Link href="/testimonies" className="flex justify-end items-center gap-3 sm:gap-4">
+            <span className="text-sm sm:text-base text-blue-900 font-medium">Conoce los testimonios</span>
             <button className="bg-red-600 text-white w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center hover:bg-red-700 transition-colors">
               →
             </button>
-          </div>
+          </Link>
         </section>
   
         {/* Testimonials Section */}

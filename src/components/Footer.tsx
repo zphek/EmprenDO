@@ -1,5 +1,6 @@
 import React from 'react';
 import { Twitter, Instagram } from 'lucide-react';
+import Link from 'next/link';
 
 const Footer = () => {
   return (
@@ -24,11 +25,9 @@ const Footer = () => {
           </div>
 
           {/* Center - Logo */}
-          <div className="absolute left-1/2 transform -translate-x-1/2">
-            <h2 className="text-xl font-semibold">
-              Empren<span className="text-red-600">DO</span>
-            </h2>
-          </div>
+          <Link href={"/"} className="absolute left-1/2 transform -translate-x-1/2">
+            <img src="/logo.svg" className='h-8' alt="" />
+          </Link>
 
           {/* Right - Social Media */}
           <div className="flex items-center space-x-4">

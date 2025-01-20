@@ -23,7 +23,10 @@ export default async function getSession() {
             user: null
         };
     } catch (error) {
-        return null;
+        return {
+          isAuthenticated: false,
+          user: null
+        };
     }
 }
 

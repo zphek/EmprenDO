@@ -93,6 +93,7 @@ const LoginInterface = () => {
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Button 
+          onClick={()=> router.push("/")}
           variant="ghost" 
           className="absolute left-4 top-4 mb-8 p5 rounded-full border-2 border-[#152080] text-[#152080] hover:bg-[#152080] hover:text-white transition-[400ms] hover:scale-110" 
           size="icon"
@@ -101,8 +102,7 @@ const LoginInterface = () => {
         </Button>
 
         <div className="absolute top-4 right-4">
-          <span className="text-gray-500">Empren</span>
-          <span className="text-red-600">8</span>
+          <img src="/logo.svg" className='h-5' alt="" />
         </div>
 
         <Card className="border-0 shadow-none">

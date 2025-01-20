@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Define protected and public routes
-  const authenticatedRoutes = ['/favorites', '/library', '/mentors', '/projects', '/admin']
+  const authenticatedRoutes = ['/favorites', '/library', '/mentors', '/projects', '/admin', '/settings', '/profile']
   const unauthenticatedRoutes = ['/login', '/register', '/retrieve']
 
   // If there's a token, verify it
@@ -82,6 +82,7 @@ export const config = {
     '/register',
     '/retrieve',
     '/profile',
+    '/settings',
     '/'
   ]
 }

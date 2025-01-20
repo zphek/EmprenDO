@@ -7,7 +7,9 @@ import {
     Timestamp,
     query,
     where,
-    getDocs
+    getDocs,
+    doc,
+    getDoc
 } from 'firebase/firestore';
 import { 
     ref, 
@@ -15,6 +17,7 @@ import {
     getDownloadURL 
 } from 'firebase/storage';
 import { db, storage } from '@/firebase';
+import getSession from "./verifySession";
 
 interface ProjectData {
     categoryId: string;
@@ -199,6 +202,7 @@ export async function createProject(formData: FormData): Promise<ServerActionRes
             };
         }
 
+        // Preparar los datos base del proyecto
         const projectData: ProjectData = {
             categoryId: formData.get('categoryId') as string,
             projectObj: projectName,
@@ -219,6 +223,7 @@ export async function createProject(formData: FormData): Promise<ServerActionRes
             images: []
         };
 
+        // Procesar las imágenes
         let selectedImages;
         try {
             const selectedImagesJson = formData.get('selectedImages');
@@ -231,11 +236,43 @@ export async function createProject(formData: FormData): Promise<ServerActionRes
             };
         }
 
+        // Subir imágenes directamente en createProject
         if (selectedImages && selectedImages.length > 0) {
-            const imageUrls = await uploadImages(selectedImages);
-            projectData.images = imageUrls;
+            const imageUrls = await Promise.all(
+                selectedImages.map(async (imageData: any) => {
+                    if (!imageData || !imageData.preview) {
+                        return null;
+                    }
+
+                    try {
+                        // Crear nombre único para el archivo
+                        const timestamp = Date.now();
+                        const randomString = Math.random().toString(36).substring(7);
+                        const fileName = `${timestamp}-${randomString}`;
+                        const storageRef = ref(storage, `projects/${fileName}`);
+
+                        // Convertir base64/dataURL a blob
+                        const response = await fetch(imageData.preview);
+                        const blob = await response.blob();
+
+                        // Subir el blob a Firebase Storage
+                        const snapshot = await uploadBytes(storageRef, blob);
+                        
+                        // Obtener URL de descarga
+                        const downloadURL = await getDownloadURL(snapshot.ref);
+                        return downloadURL;
+                    } catch (error) {
+                        console.error("Error uploading image:", error);
+                        return null;
+                    }
+                })
+            );
+
+            // Filtrar URLs nulas y asignar al projectData
+            projectData.images = imageUrls.filter((url): url is string => url !== null);
         }
 
+        // Crear el documento del proyecto con todas las URLs de imágenes
         const projectsRef = collection(db, 'projects');
         const docRef = await addDoc(projectsRef, projectData);
 
@@ -255,5 +292,35 @@ export async function createProject(formData: FormData): Promise<ServerActionRes
                 ? error.message 
                 : "Error al crear el proyecto"
         };
+    }
+}
+
+export async function imProjectOwner(projectId: string) {
+    try {
+        // Obtener la sesión del usuario actual
+        const session = await getSession();
+        // @ts-ignore - Ignoramos el error de TypeScript por ahora
+        const userId = session?.user?.user_id;
+
+        if (!userId) {
+            return false;
+        }
+
+        // Obtener el documento del proyecto
+        const projectRef = doc(db, "projects", projectId);
+        const projectSnap = await getDoc(projectRef);
+
+        if (!projectSnap.exists()) {
+            return false;
+        }
+
+        const projectData = projectSnap.data();
+
+        // Verificar si el userId coincide con el del proyecto
+        return projectData.userId === userId;
+
+    } catch (error) {
+        console.error('Error verificando propietario del proyecto:', error);
+        return false;
     }
 }
