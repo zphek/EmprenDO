@@ -2,16 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
-import { db } from "@/firebase";
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
-  deleteDoc,
-  serverTimestamp 
-} from "firebase/firestore";
+import { toggleFavoriteProjectFunction, callFunction } from "@/utils/functions";
 
 interface FavoriteButtonProps {
   projectId: string;
@@ -71,29 +62,9 @@ const FavoriteButton = ({ projectId, userId }: FavoriteButtonProps) => {
       setIsLoading(true);
       setError(null);
       
-      const savedProjectsRef = collection(db, "saved_projects");
-      const q = query(
-        savedProjectsRef,
-        where("userId", "==", userId),
-        where("projectId", "==", projectId)
-      );
+      const result = await callFunction(toggleFavoriteProjectFunction, { projectId });
       
-      const querySnapshot = await getDocs(q);
-      
-      if (querySnapshot.empty) {
-        // Guardar proyecto
-        await addDoc(savedProjectsRef, {
-          userId,
-          projectId,
-          savedAt: serverTimestamp()
-        });
-        setIsSaved(true);
-      } else {
-        // Eliminar proyecto de guardados
-        const docRef = querySnapshot.docs[0].ref;
-        await deleteDoc(docRef);
-        setIsSaved(false);
-      }
+      setIsSaved(result.isFavorite);
     } catch (error) {
       console.error("Error toggling save:", error);
       setError("Error al guardar/eliminar el proyecto");

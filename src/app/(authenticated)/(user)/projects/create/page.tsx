@@ -6,9 +6,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import CurrencyInput from "./CurrencyInput";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { storage, db } from "@/firebase";
+import { storage } from "@/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { createProjectFunction, callFunction } from "@/utils/functions";
 import getSession from "../../../../../../actions/verifySession";
 
 interface SessionResponse {
@@ -285,17 +285,13 @@ export default function ProjectForm() {
         newProjectData.images = imageUrls.filter((url): url is string => url !== null);
       }
 
-      // Crear el documento del proyecto en Firestore
-      const projectsRef = collection(db, 'projects');
-      const docRef = await addDoc(projectsRef, newProjectData);
-
-      // Revalidar el path para actualizar la cache
-      // revalidatePath('/projects');
+      // Crear el documento del proyecto usando Cloud Function
+      const result = await callFunction(createProjectFunction, newProjectData);
 
       // Mostrar mensaje de éxito y redireccionar
       setShowSuccessPopup(true);
       setTimeout(() => {
-        router.push(`/projects/${docRef.id}`);
+        router.push(`/projects/${result.projectId}`);
       }, 2000);
 
     } catch (error) {
