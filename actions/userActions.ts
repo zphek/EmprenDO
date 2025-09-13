@@ -164,9 +164,8 @@ type NewUserData = {
         displayName: data.name,
       });
   
-      // Guardar información adicional en Firestore
-      const db = getFirestore();
-      await db.collection('users').doc(userRecord.uid).set({
+      // Guardar información adicional en Firestore usando Client SDK
+      await setDoc(doc(db, 'users', userRecord.uid), {
         name: data.name,
         email: data.email,
         role: data.role,
