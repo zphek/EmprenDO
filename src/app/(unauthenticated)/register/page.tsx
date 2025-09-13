@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, fetchSignInMethodsForEmail } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/firebase';
+import { auth } from '@/firebase';
+import { createUserFunction, callFunction } from '@/utils/functions';
 import { Toaster, toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 
@@ -48,19 +48,14 @@ export default function Page() {
     return true;
   };
 
-  const saveUserData = async (userId: string, userData: {
+  const saveUserData = async (userData: {
     name: string;
     email: string;
     cedula: string;
-    createdAt: Date;
     role: string;
   }) => {
     try {
-      await setDoc(doc(db, 'users', userId), {
-        ...userData,
-        updatedAt: new Date()
-      });
-
+      await callFunction(createUserFunction, userData);
       setTimeout(() => router.push('/login'), 2000);
     } catch (error) {
       console.error('Error guardando datos del usuario:', error);
@@ -91,11 +86,10 @@ export default function Page() {
       );
 
       // Guardar datos adicionales en Firestore
-      await saveUserData(userCredential.user.uid, {
+      await saveUserData({
         name: formData.name,
         email: formData.email,
         cedula: formData.cedula,
-        createdAt: new Date(),
         role: 'normal'
       });
 
