@@ -106,30 +106,71 @@ export default function Page() {
   const handleGoogleSignup = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-
-
-      const user = result.user;
-
-      if (!user.email) {
-        await auth.signOut();
-        toast.error('No se pudo obtener el correo electrónico');
-        return;
-      }
+      provider.addScope('email');
+      provider.addScope('profile');
       
-      // Guardar datos adicionales del usuario de Google
-      await saveUserData(user.uid, {
-        name: user.displayName || 'Usuario de Google',
-        email: user.email,
-        cedula: '', // Podrías solicitar la cédula después del registro con Google
-        createdAt: new Date(),
-        role: "normal"
+      // Configurar parámetros adicionales
+      provider.setCustomParameters({
+        prompt: 'select_account'
       });
 
-      toast.success('¡Registro con Google exitoso!');
+      toast.promise(
+        (async () => {
+          // Primero verificamos si el email ya existe
+          const result = await signInWithPopup(auth, provider);
+          const user = result.user;
+
+          if (!user.email) {
+            await auth.signOut();
+            throw new Error('No se pudo obtener el correo electrónico');
+          }
+
+          // Verificar si el email ya existe en los métodos de autenticación
+          const methods = await fetchSignInMethodsForEmail(auth, user.email);
+          if (methods.length > 1) { // Si ya tiene otros métodos además de Google
+            await auth.signOut();
+            throw new Error('Este correo ya está registrado con otro método');
+          }
+
+          // Guardar datos adicionales del usuario de Google
+          await saveUserData({
+            name: user.displayName || 'Usuario de Google',
+            email: user.email,
+            cedula: '', // Se puede solicitar después
+            role: "normal"
+          });
+
+          setTimeout(() => router.push('/login'), 2000);
+          return result;
+        })(),
+        {
+          loading: 'Registrando con Google...',
+          success: <b>¡Registro exitoso!</b>,
+          error: (err) => {
+            console.error('Error de Google Auth:', err);
+            
+            // Manejo específico de errores
+            if (err.code === 'auth/popup-closed-by-user') {
+              return <b>Registro cancelado</b>;
+            } else if (err.code === 'auth/popup-blocked') {
+              return <b>Popup bloqueado. Permite popups e intenta de nuevo</b>;
+            } else if (err.code === 'auth/cancelled-popup-request') {
+              return <b>Solicitud cancelada</b>;
+            } else if (err.code === 'auth/network-request-failed') {
+              return <b>Error de conexión. Verifica tu internet</b>;
+            } else if (err.code === 'auth/account-exists-with-different-credential') {
+              return <b>Esta cuenta ya existe con diferentes credenciales</b>;
+            } else if (err.message.includes('ya está registrado')) {
+              return <b>Este correo ya está registrado</b>;
+            } else {
+              return <b>Error al registrarse con Google</b>;
+            }
+          }
+        }
+      );
+      
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('No se pudo completar el registro con Google');
+      console.error('Error inicial:', error);
       await auth.signOut();
     }
   };

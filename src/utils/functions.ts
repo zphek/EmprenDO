@@ -133,7 +133,20 @@ export const callFunction = async (functionName: any, data?: any) => {
         return result.data;
     } catch (error: any) {
         console.error(`Error calling function:`, error);
-        throw new Error(error.message || "Error en la función");
+        
+        let errorMessage = "Error en la función";
+        
+        try {
+            if (typeof error === 'string') {
+                errorMessage = error;
+            } else if (error && typeof error === 'object') {
+                errorMessage = error.message || error.details || error.code || JSON.stringify(error);
+            }
+        } catch (parseError) {
+            console.error('Error parsing error object:', parseError);
+        }
+        
+        throw new Error(errorMessage);
     }
 };
 

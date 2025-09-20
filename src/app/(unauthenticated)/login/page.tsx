@@ -60,46 +60,61 @@ const LoginInterface = () => {
   };
 
   const handleGoogleLogin = async () => {
-    await setPersistence(auth, browserLocalPersistence);
-
     try {
-      // Primero intentamos obtener el email del usuario que intenta registrarse
+      await setPersistence(auth, browserLocalPersistence);
+      
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const userEmail = result.user.email;
-
-      console.log(result);
-
+      provider.addScope('email');
+      provider.addScope('profile');
       
-      if (!userEmail) {
-        await auth.signOut();
-        toast.error('No se pudo obtener el correo electrónico');
-        return;
-      }
-      
-      await createCookie(await result?.user.getIdToken());
-      
-      setTimeout(()=>{
-        router.push("/landing");
-      }, 2000);
+      // Configurar parámetros adicionales
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
 
-      // // Verificamos si el email ya existe
-      // const methods = await fetchSignInMethodsForEmail(auth, userEmail);
-      
-      // // Si ya existe el correo, no permitimos el registro
-      // if (methods.length == 0) {
-      //   await auth.signOut();
-      //   toast.error('Esta cuenta no existe.');
-      //   return;
-      // }
+      toast.promise(
+        (async () => {
+          const result = await signInWithPopup(auth, provider);
+          const userEmail = result.user.email;
 
-      // Si llegamos aquí, es un nuevo registro válido
-      toast.success('Haz iniciado sesión!');
+          if (!userEmail) {
+            await auth.signOut();
+            throw new Error('No se pudo obtener el correo electrónico');
+          }
+          
+          await createCookie(await result.user.getIdToken());
+          
+          setTimeout(() => {
+            router.push("/landing");
+          }, 2000);
+
+          return result;
+        })(),
+        {
+          loading: 'Iniciando sesión con Google...',
+          success: <b>¡Bienvenido!</b>,
+          error: (err) => {
+            console.error('Error de Google Auth:', err);
+            
+            // Manejo específico de errores
+            if (err.code === 'auth/popup-closed-by-user') {
+              return <b>Inicio de sesión cancelado</b>;
+            } else if (err.code === 'auth/popup-blocked') {
+              return <b>Popup bloqueado. Permite popups e intenta de nuevo</b>;
+            } else if (err.code === 'auth/cancelled-popup-request') {
+              return <b>Solicitud cancelada</b>;
+            } else if (err.code === 'auth/network-request-failed') {
+              return <b>Error de conexión. Verifica tu internet</b>;
+            } else {
+              return <b>Error al iniciar sesión con Google</b>;
+            }
+          }
+        }
+      );
       
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('No se pudo completar el registro con Google');
-      // Asegurarnos de cerrar la sesión si algo falla
+      console.error('Error inicial:', error);
+      // Este catch maneja errores antes del toast.promise
       await auth.signOut();
     }
   };

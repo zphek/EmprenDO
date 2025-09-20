@@ -6,8 +6,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import CurrencyInput from "./CurrencyInput";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { storage } from "@/firebase";
+import { storage, auth } from "@/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { Timestamp } from "firebase/firestore";
+import { useAuthState } from "react-firebase-hooks/auth";
 import { createProjectFunction, callFunction } from "@/utils/functions";
 import getSession from "../../../../../../actions/verifySession";
 
@@ -25,6 +27,7 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
 
 export default function ProjectForm() {
   const router = useRouter();
+  const [user, loading, error] = useAuthState(auth);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [showSplash, setShowSplash] = useState(true);
@@ -251,38 +254,54 @@ export default function ProjectForm() {
 
       // Procesar y subir imágenes
       if (selectedImages.length > 0) {
-        const imageUrls = await Promise.all(
-          selectedImages.map(async (imageData) => {
-            if (!imageData || !imageData.preview) {
-              return null;
-            }
+        try {
+          // Verificar que el usuario esté autenticado en Firebase Auth
+          if (!user) {
+            console.warn('Usuario no autenticado para subir imágenes, creando proyecto sin imágenes');
+            newProjectData.images = [];
+          } else {
+            const imageUrls = await Promise.all(
+              selectedImages.map(async (imageData) => {
+                if (!imageData || !imageData.preview) {
+                  return null;
+                }
 
-            try {
-              // Crear nombre único para el archivo
-              const timestamp = Date.now();
-              const randomString = Math.random().toString(36).substring(7);
-              const fileName = `${timestamp}-${randomString}`;
-              const storageRef = ref(storage, `projects/${fileName}`);
+                try {
+                  // Crear nombre único para el archivo usando el user_id de la sesión
+                  const timestamp = Date.now();
+                  const randomString = Math.random().toString(36).substring(7);
+                  const fileName = `${session.user.user_id}-${timestamp}-${randomString}`;
+                  const storageRef = ref(storage, `projects/${fileName}`);
 
-              // Convertir base64/dataURL a blob
-              const response = await fetch(imageData.preview);
-              const blob = await response.blob();
+                  // Convertir base64/dataURL a blob
+                  const response = await fetch(imageData.preview);
+                  const blob = await response.blob();
 
-              // Subir el blob a Firebase Storage
-              const snapshot = await uploadBytes(storageRef, blob);
-              
-              // Obtener URL de descarga
-              const downloadURL = await getDownloadURL(snapshot.ref);
-              return downloadURL;
-            } catch (error) {
-              console.error("Error uploading image:", error);
-              return null;
-            }
-          })
-        );
+                  // Subir el blob a Firebase Storage
+                  const snapshot = await uploadBytes(storageRef, blob);
+                  
+                  // Obtener URL de descarga
+                  const downloadURL = await getDownloadURL(snapshot.ref);
+                  return downloadURL;
+                } catch (error) {
+                  console.error("Error uploading image:", error);
+                  return null;
+                }
+              })
+            );
 
-        // Filtrar URLs nulas y asignar al projectData
-        newProjectData.images = imageUrls.filter((url): url is string => url !== null);
+            // Filtrar URLs nulas y asignar al projectData
+            newProjectData.images = imageUrls.filter((url): url is string => url !== null);
+          }
+        } catch (storageError) {
+          console.error("Error con Firebase Storage, creando proyecto sin imágenes:", storageError);
+          // Si hay error con Storage, crear el proyecto sin imágenes
+          newProjectData.images = [];
+          setServerResponse({
+            error: false,
+            message: "Proyecto creado sin imágenes debido a problemas de permisos"
+          });
+        }
       }
 
       // Crear el documento del proyecto usando Cloud Function

@@ -32,7 +32,7 @@ export async function middleware(request: NextRequest) {
 
   // If there's a token, verify it
   try {
-    const verificationResponse = await fetch(`http://localhost:3000/api/auth`, {
+    const verificationResponse = await fetch(`${request.nextUrl.origin}/api/auth`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Cookie': `AccessToken=${token}`

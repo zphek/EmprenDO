@@ -2,37 +2,129 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { CreditCard, Wallet, X } from "lucide-react";
+import { CreditCard, X } from "lucide-react";
 import { auth, db } from "@/firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp, runTransaction } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
-const paymentMethods = [
-  {
-    id: 'card1',
-    type: 'credit',
-    last4: '4242',
-    expiry: '12/24',
-    default: true
-  },
-  {
-    id: 'card2',
-    type: 'debit',
-    last4: '8888',
-    expiry: '06/25',
-    default: false
-  }
-];
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+
+const PaymentForm = ({ amount, projectData, onSuccess, onError }: {
+  amount: string;
+  projectData: any;
+  onSuccess: () => void;
+  onError: (error: string) => void;
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const user = auth.currentUser;
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      onError('Card element not found');
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    if (amountNum < projectData.minInvestmentAmount) {
+      onError(`La inversión mínima es $${projectData.minInvestmentAmount.toLocaleString()}`);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Create payment intent
+      const response = await fetch('/api/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          projectId: projectData.id,
+        }),
+      });
+
+      const { clientSecret } = await response.json();
+
+      if (!clientSecret) {
+        throw new Error('Failed to create payment intent');
+      }
+
+      // Confirm payment
+      const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            email: user?.email || '',
+          },
+        },
+      });
+
+      if (stripeError) {
+        onError(stripeError.message || 'Error al procesar el pago');
+      } else {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      onError('Error al procesar el pago');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 border border-gray-200 rounded-lg">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Información de la tarjeta
+        </label>
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                  color: '#aab7c4',
+                },
+              },
+            },
+          }}
+        />
+      </div>
+      
+      <button
+        type="submit"
+        disabled={!stripe || !amount || parseFloat(amount) < (projectData.minInvestmentAmount || 0) || isSubmitting}
+        className="w-full bg-[#CD1029] text-white py-3 rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+      >
+        {isSubmitting ? 'Procesando...' : `Confirmar aporte de $${amount}`}
+      </button>
+    </form>
+  );
+};
 
 const SupportDialog = () => {
   const params = useParams();
   const projectId = params.id as string;
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState('');
-  const [selectedMethod, setSelectedMethod] = useState(paymentMethods[0].id);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [projectData, setProjectData] = useState<any>(null);
   const [error, setError] = useState('');
-  const user = auth.currentUser;
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     const fetchProjectData = async () => {
@@ -41,7 +133,7 @@ const SupportDialog = () => {
         const projectSnap = await getDoc(projectRef);
         
         if (projectSnap.exists()) {
-          setProjectData(projectSnap.data());
+          setProjectData({ id: projectId, ...projectSnap.data() });
         } else {
           setError('Proyecto no encontrado');
         }
@@ -54,56 +146,21 @@ const SupportDialog = () => {
     fetchProjectData();
   }, [projectId]);
 
-  const handleSupport = async () => {
-    if (!amount || !projectData) return;
-    
-    const amountNum = parseFloat(amount);
-    if (amountNum < projectData.minInvestmentAmount) {
-      setError(`La inversión mínima es $${projectData.minInvestmentAmount.toLocaleString()}`);
-      return;
-    }
-    
+  const handleSuccess = () => {
+    setSuccessMessage('¡Pago procesado exitosamente!');
     setError('');
-    setIsSubmitting(true);
-    try {
-      await runTransaction(db, async (transaction) => {
-        // 1. Primero realizamos todas las lecturas
-        const projectRef = doc(db, "projects", projectId);
-        const projectDoc = await transaction.get(projectRef);
-        
-        if (!projectDoc.exists()) {
-          throw new Error("El proyecto no existe!");
-        }
-
-        // Guardamos los datos necesarios de la lectura
-        const currentMoneyReached = projectDoc.data().moneyReached || 0;
-        
-        // 2. Luego realizamos todas las escrituras
-        const investmentRef = doc(collection(db, 'investments'));
-        transaction.set(investmentRef, {
-          projectId,
-          userId: user?.uid,
-          amount: amountNum,
-          paymentMethodId: selectedMethod,
-          status: 'completed',
-          createdAt: serverTimestamp(),
-        });
-
-        // Actualizamos el moneyReached del proyecto
-        transaction.update(projectRef, {
-          moneyReached: currentMoneyReached + amountNum
-        });
-      });
-
+    setTimeout(() => {
       setIsOpen(false);
       setAmount('');
-      // Aquí podrías mostrar una notificación de éxito
-    } catch (error) {
-      console.error('Error al procesar el pago:', error);
-      setError('Error al procesar el pago');
-    } finally {
-      setIsSubmitting(false);
-    }
+      setSuccessMessage('');
+      // Refresh the page to show updated amounts
+      window.location.reload();
+    }, 2000);
+  };
+
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    setSuccessMessage('');
   };
 
   if (!projectData) return null;
@@ -121,14 +178,15 @@ const SupportDialog = () => {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
-            onClick={() => !isSubmitting && setIsOpen(false)}
+            onClick={() => !successMessage && setIsOpen(false)}
           />
 
           <div className="relative min-h-screen flex items-center justify-center p-4">
             <div className="relative bg-white rounded-lg w-full max-w-md p-6">
               <button
-                onClick={() => !isSubmitting && setIsOpen(false)}
+                onClick={() => !successMessage && setIsOpen(false)}
                 className="absolute top-4 right-4 text-gray-400 hover:text-gray-500"
+                disabled={!!successMessage}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -140,6 +198,12 @@ const SupportDialog = () => {
                   </h2>
                 </div>
 
+                {successMessage && (
+                  <div className="p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+                    {successMessage}
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
                     Monto a aportar
@@ -150,9 +214,10 @@ const SupportDialog = () => {
                       type="number"
                       id="amount"
                       min={projectData.minInvestmentAmount}
-                      className="pl-6 w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      className="pl-6 w-full rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-2"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
+                      disabled={!!successMessage}
                     />
                   </div>
                   <p className="text-sm text-gray-500">
@@ -165,62 +230,16 @@ const SupportDialog = () => {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Método de pago
-                  </label>
-                  <div className="space-y-2">
-                    {paymentMethods.map((method) => (
-                      <div
-                        key={method.id}
-                        className={`relative flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
-                          selectedMethod === method.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-200'
-                        }`}
-                        onClick={() => setSelectedMethod(method.id)}
-                      >
-                        <div className="flex items-center h-5">
-                          <div
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              selectedMethod === method.id
-                                ? 'border-blue-500'
-                                : 'border-gray-300'
-                            }`}
-                          >
-                            {selectedMethod === method.id && (
-                              <div className="w-2 h-2 rounded-full bg-blue-500" />
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="ml-3 flex items-center">
-                          {method.type === 'credit' ? (
-                            <CreditCard className="w-5 h-5 text-gray-600" />
-                          ) : (
-                            <Wallet className="w-5 h-5 text-gray-600" />
-                          )}
-                          <div className="ml-3">
-                            <p className="font-medium text-gray-900">
-                              {method.type === 'credit' ? 'Tarjeta de crédito' : 'Tarjeta de débito'}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              **** {method.last4} • Expira {method.expiry}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleSupport}
-                  disabled={!amount || parseFloat(amount) < (projectData.minInvestmentAmount || 0) || isSubmitting}
-                  className="w-full bg-[#CD1029] text-white py-3 rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? 'Procesando...' : 'Confirmar aporte'}
-                </button>
+                {amount && !successMessage && (
+                  <Elements stripe={stripePromise}>
+                    <PaymentForm
+                      amount={amount}
+                      projectData={projectData}
+                      onSuccess={handleSuccess}
+                      onError={handleError}
+                    />
+                  </Elements>
+                )}
               </div>
             </div>
           </div>

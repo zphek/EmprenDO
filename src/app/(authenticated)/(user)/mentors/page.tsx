@@ -7,8 +7,7 @@ import { Star } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 // Firebase imports
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { getMentorsFunction, callFunction } from '@/utils/functions';
 
 interface Mentor {
   id: string;
@@ -70,19 +69,24 @@ const Page = () => {
   useEffect(() => {
     const fetchMentors = async () => {
       try {
-        const mentorsCollection = collection(db, 'mentorUser');
-        const mentorsSnapshot = await getDocs(mentorsCollection);
-        const mentorsList = mentorsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Mentor[];
+        const result = await callFunction(getMentorsFunction);
         
-        setMentors(mentorsList.filter(mentor => mentor.status === "Activo"));
+        if (result && result.success) {
+          setMentors(result.mentors.filter((mentor: Mentor) => mentor.status === "Activo"));
+        } else if (result && result.mentors) {
+          // Si no hay success field pero hay mentors, usar directamente
+          setMentors(result.mentors.filter((mentor: Mentor) => mentor.status === "Activo"));
+        } else {
+          setError(result?.message || 'No se pudieron cargar los mentores');
+        }
         setLoading(false);
       } catch (err) {
-        setError('Error al cargar los mentores');
-        setLoading(false);
         console.error('Error fetching mentors:', err);
+        setError(`Error al cargar los mentores: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+        setLoading(false);
+        
+        // Fallback: mostrar mensaje de error pero no romper la página
+        setMentors([]);
       }
     };
 
