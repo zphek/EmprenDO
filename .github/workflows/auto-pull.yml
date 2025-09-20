@@ -1,0 +1,37 @@
+name: Auto Pull on Main Push
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  auto-pull:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch all history for all branches
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
+    - name: Pull latest changes from main
+      run: |
+        echo "Current branch: $(git branch --show-current)"
+        echo "Fetching latest changes from origin..."
+        git fetch origin main
+        echo "Pulling changes from main..."
+        git pull origin main --no-edit
+        echo "Successfully pulled changes from main"
+    
+    - name: Display updated status
+      run: |
+        echo "Latest commit on main:"
+        git log --oneline -1
+        echo "Repository is now up to date with main branch"

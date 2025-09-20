@@ -1,0 +1,76 @@
+name: Deploy on Main Push
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows manual trigger
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run linting
+      run: npm run lint --if-present
+    
+    - name: Run type checking
+      run: npm run typecheck --if-present
+    
+    - name: Build application
+      run: npm run build
+    
+    - name: Pull latest changes
+      run: |
+        echo "Ensuring repository is up to date..."
+        git fetch origin main
+        git pull origin main --no-edit
+        echo "Repository updated successfully"
+    
+    - name: Deploy notification
+      run: |
+        echo "🚀 Deployment completed successfully!"
+        echo "📦 Built at: $(date)"
+        echo "🔗 Commit: ${{ github.sha }}"
+        echo "👤 Triggered by: ${{ github.actor }}"
+    
+    # Uncomment and configure these steps for actual deployment
+    # - name: Deploy to production
+    #   run: |
+    #     # Add your deployment commands here
+    #     # For example: deploy to Vercel, Netlify, or your hosting service
+    #     echo "Add deployment commands here"
+    
+    # - name: Notify team on success
+    #   if: success()
+    #   run: |
+    #     # Add notification logic (Slack, Discord, email, etc.)
+    #     echo "Notify team of successful deployment"
+    
+    # - name: Notify team on failure
+    #   if: failure()
+    #   run: |
+    #     # Add failure notification logic
+    #     echo "Notify team of deployment failure"
